@@ -25,8 +25,10 @@ case "$cmd" in
     block "Blocked: reading the macOS Keychain is not allowed from Claude Code." ;;
   *with-secrets*)
     block "Blocked: commands that load API keys are run by the user, not by Claude Code." ;;
-  *--no-verify*|*core.hookspath*|*.githooks*)
-    block "Blocked: skipping or changing the pre-commit secret scan is not allowed." ;;
+  *--no-verify*|*--no-ver*|*core.hookspath*|*.githooks*|*git_config*|*.gitleaks*)
+    block "Blocked: skipping or changing the secret scan is not allowed." ;;
+  *.claude/settings*|*.claude/hooks*|*.github/workflows*)
+    block "Blocked: Claude Code settings, hooks and CI workflows are changed by the user, not through Bash." ;;
 esac
 shopt -u nocasematch
 
