@@ -2,8 +2,10 @@
 # Runs a command with API keys loaded from the macOS Keychain, so keys never
 # live in files, shell history, or the repo.
 #
-# One-time setup (you will be prompted for the key; it is not echoed):
-#   security add-generic-password -a "$USER" -s safe-ai-kit/anthropic-api-key -w
+# One-time setup (you will be prompted for the key; it is not echoed). -T ""
+# trusts no app, so macOS shows a Keychain password dialog every time the key
+# is read; a shell or agent cannot answer that dialog for you:
+#   security add-generic-password -a "$USER" -s safe-ai-kit/anthropic-api-key -T "" -w
 #
 # Usage:
 #   scripts/with-secrets.sh uv run python -m kit.agent
