@@ -21,6 +21,11 @@ block() {
   exit 0
 }
 
+# Match on a copy with quotes and backslashes removed too, so ".e""nv" or
+# --no-ver\ify cannot slip past the patterns below.
+norm="$(printf '%s' "$cmd" | tr -d "'\"\\\\")"
+cmd="$cmd $norm"
+
 shopt -s nocasematch
 case "$cmd" in
   *.env*|*.pem*|*.p12*|*id_rsa*|*id_ed25519*|*/.ssh*|*/.aws*|*Keychains*)
