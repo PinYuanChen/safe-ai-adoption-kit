@@ -21,9 +21,10 @@ I am learning applied AI engineering through this project. Lessons live in `~/le
 - When I ask for a review, explain *why* something is risky or wrong instead of only giving the fix.
 
 ## Security rules
-- Never put secrets in code, config, commits, or chat. Secrets live in the macOS Keychain and are injected at run time by `scripts/with-secrets.sh`.
+- Never put secrets in code, config, commits, or chat. Secrets live in the macOS Keychain and are injected at run time by `scripts/with-secrets.sh`, which only I run (it refuses to start inside Claude Code). Claude Code works with mocked LLM clients; real API runs are mine.
 - `.env*` files and key files must never be read or created with real values; `.env.example` holds names only.
 - Use synthetic data only. Never add real personal or company data to the repo, prompts, or evals.
 - Code that processes untrusted content (documents, red-team payloads) runs in a Docker container with no secrets mounted and no network access unless a test needs it.
 - Add dependencies only after checking the exact package name and maintainer; pin versions through the lockfiles. Do not add MCP servers or skills from unknown sources.
-- gitleaks runs as a pre-commit hook (`.githooks/pre-commit`). Do not bypass it with `--no-verify`.
+- gitleaks runs as a pre-commit hook (`.githooks/pre-commit`) and again on every push in CI (`.github/workflows/secret-scan.yml`). Do not bypass either.
+- `.claude/hooks/guard-bash.sh` blocks Bash commands that touch secret files, the Keychain, `with-secrets.sh`, or the pre-commit hook. `.claude/` and `.githooks/` are not editable by Claude Code; I change them by hand.

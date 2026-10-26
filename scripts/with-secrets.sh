@@ -9,6 +9,13 @@
 #   scripts/with-secrets.sh uv run python -m kit.agent
 set -euo pipefail
 
+# API calls cost money and expose the key to the child process, so only a
+# human runs this. Claude Code sets CLAUDECODE=1 in the shells it starts.
+if [[ -n "${CLAUDECODE:-}" ]]; then
+  echo "Refusing to load API keys inside a Claude Code session. Run this yourself in a terminal." >&2
+  exit 1
+fi
+
 if [[ $# -eq 0 ]]; then
   echo "usage: $0 <command> [args...]" >&2
   exit 64

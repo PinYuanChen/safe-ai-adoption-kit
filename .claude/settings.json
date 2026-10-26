@@ -19,17 +19,29 @@
       "Bash(git commit -n*)",
       "Bash(*core.hooksPath*)",
       "Bash(*gitleaks*--no-git*)",
-      "Bash(*.githooks*)"
+      "Bash(*.githooks*)",
+      "Bash(*with-secrets*)",
+      "Edit(.claude/**)",
+      "Edit(.githooks/**)"
     ],
     "ask": [
-      "Bash(./scripts/with-secrets.sh *)",
-      "Bash(scripts/with-secrets.sh *)",
-      "Bash(*with-secrets*)",
-      "Edit(.claude/settings.json)",
-      "Edit(.githooks/**)",
       "Edit(.github/workflows/**)",
       "Bash(git config *)",
       "Bash(git -c *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh",
+            "statusMessage": "Checking command for secret access"
+          }
+        ]
+      }
     ]
   }
 }
