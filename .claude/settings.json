@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*.p12)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Bash(security find-generic-password *)",
+      "Bash(security find-internet-password *)",
+      "Bash(security dump-keychain *)",
+      "Bash(git commit --no-verify *)",
+      "Bash(git commit -n *)"
+    ],
+    "ask": [
+      "Bash(./scripts/with-secrets.sh *)",
+      "Bash(scripts/with-secrets.sh *)"
+    ]
+  }
+}
