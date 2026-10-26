@@ -10,15 +10,26 @@
       "Read(**/*.p12)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
-      "Bash(security find-generic-password *)",
-      "Bash(security find-internet-password *)",
-      "Bash(security dump-keychain *)",
-      "Bash(git commit --no-verify *)",
-      "Bash(git commit -n *)"
+      "Read(~/Library/Keychains/**)",
+      "Bash(*.env*)",
+      "Bash(*security find-*)",
+      "Bash(*security dump-keychain*)",
+      "Bash(*security export*)",
+      "Bash(*--no-verify*)",
+      "Bash(git commit -n*)",
+      "Bash(*core.hooksPath*)",
+      "Bash(*gitleaks*--no-git*)",
+      "Bash(*.githooks*)"
     ],
     "ask": [
       "Bash(./scripts/with-secrets.sh *)",
-      "Bash(scripts/with-secrets.sh *)"
+      "Bash(scripts/with-secrets.sh *)",
+      "Bash(*with-secrets*)",
+      "Edit(.claude/settings.json)",
+      "Edit(.githooks/**)",
+      "Edit(.github/workflows/**)",
+      "Bash(git config *)",
+      "Bash(git -c *)"
     ]
   }
 }
