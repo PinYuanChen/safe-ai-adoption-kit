@@ -4,6 +4,10 @@
 # secrets, load API keys, or skip the secret scan, wherever it appears.
 set -euo pipefail
 
+# Fail closed: if the guard itself breaks, the command is blocked (exit 2).
+trap 'echo "guard-bash failed; blocking command" >&2; exit 2' ERR
+command -v jq >/dev/null || { echo "guard-bash: jq is missing; blocking command" >&2; exit 2; }
+
 cmd="$(jq -r '.tool_input.command // empty')"
 
 block() {
@@ -25,9 +29,9 @@ case "$cmd" in
     block "Blocked: reading the macOS Keychain is not allowed from Claude Code." ;;
   *with-secrets*)
     block "Blocked: commands that load API keys are run by the user, not by Claude Code." ;;
-  *--no-verify*|*--no-ver*|*core.hookspath*|*.githooks*|*git_config*|*.gitleaks*)
+  *--no-v*|*core.hookspath*|*.githooks*|*git_config*|*.gitleaks*)
     block "Blocked: skipping or changing the secret scan is not allowed." ;;
-  *.claude/settings*|*.claude/hooks*|*.github/workflows*)
+  *.claude/*|*.claude\'*|*.claude\"*|*.github/workflows*)
     block "Blocked: Claude Code settings, hooks and CI workflows are changed by the user, not through Bash." ;;
 esac
 shopt -u nocasematch
