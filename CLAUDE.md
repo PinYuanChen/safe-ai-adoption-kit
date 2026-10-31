@@ -1,14 +1,15 @@
 # Safe AI Adoption Kit
 
-A reference kit showing how a traditional company can adopt AI safely: an AI gateway, a permission-aware internal assistant, an evaluation and red-team suite, and an adoption checklist. Uses a fictional trading company and synthetic data only.
+A reference kit showing how a traditional company can adopt AI safely: a multi-agent assistant with least-privilege subagents, an AI gateway, a permission-aware internal assistant, an evaluation and red-team suite, and an adoption checklist. Uses a fictional trading company and synthetic data only.
 
 ## Components (build order)
 1. Agent loop with tool use on the Anthropic SDK (Python, no framework)
-2. AI gateway (Go): secret/PII redaction, per-user budgets, audit log; the only component that holds the API key
-3. Internal knowledge assistant (Python): permission-aware RAG, human approval for write actions
-4. Evaluation and red-team suite: quality evals plus prompt injection, exfiltration, and permission-bypass tests
-5. Telemetry: OpenTelemetry traces with tokens, cost, latency, tool calls; model cost-versus-accuracy comparison
-6. Adoption checklist and write-up (`docs/`)
+2. Multi-agent orchestrator (Python): hands work to subagents through an explicit handoff format, gives each subagent only the tools it needs, and keeps running when one subagent fails
+3. Evaluation and red-team suite: answer quality, agent trajectories (wrong tool, wasted turns, runaway loops), plus prompt injection, exfiltration, and permission-bypass tests; grows with each later component
+4. Telemetry: OpenTelemetry traces with tokens, cost, latency, tool calls; single-agent versus multi-agent and model cost-versus-accuracy comparisons
+5. AI gateway (Go): secret/PII redaction, per-user budgets, audit log; the only component that holds the API key
+6. Internal knowledge assistant (Python): permission-aware retrieval as a read-only subagent, human approval for write actions
+7. Adoption checklist and write-up (`docs/`)
 
 ## Stack
 - Python managed with `uv` (lockfile committed); Go modules with `go.sum` committed
@@ -16,7 +17,7 @@ A reference kit showing how a traditional company can adopt AI safely: an AI gat
 
 ## Learning mode
 I am learning applied AI engineering through this project. Lessons live in `~/learn-applied-ai`; do not write anything there.
-- **I write these myself:** the agent loop, tool definitions and tool-selection logic, the gateway's redaction and budget logic, retrieval and permission filtering, and eval scoring.
+- **I write these myself:** the agent loop, the orchestrator's handoff and subagent tool scoping, tool definitions and tool-selection logic, the gateway's redaction and budget logic, retrieval and permission filtering, and eval scoring.
 - **Claude may write:** boilerplate, CLI scaffolding, test fixtures and synthetic data, Dockerfiles, CI config, and docs formatting.
 - When I ask for a review, explain *why* something is risky or wrong instead of only giving the fix.
 
