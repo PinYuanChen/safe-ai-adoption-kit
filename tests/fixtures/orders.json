@@ -1,0 +1,109 @@
+{
+  "_note": "Synthetic data. Harbor Lantern Trading Co. and every customer, carrier and tracking number below are fictional.",
+  "company": "Harbor Lantern Trading Co.",
+  "orders": [
+    {
+      "order_id": "HL-10421",
+      "customer": "Copperleaf Home Goods",
+      "status": "shipped",
+      "ordered_at": "2026-09-02",
+      "currency": "USD",
+      "items": [
+        {"sku": "TEA-OOL-500", "description": "Oolong tea, 500 g tins", "quantity": 120, "unit_price": 8.40},
+        {"sku": "CER-CUP-06", "description": "Ceramic tea cups, set of 6", "quantity": 40, "unit_price": 21.00}
+      ],
+      "shipment": {"shipped_at": "2026-09-09", "carrier": "Bluegate Freight", "tracking_number": "BGF-000-417-221", "eta": "2026-09-30"}
+    },
+    {
+      "order_id": "HL-10422",
+      "customer": "Marrow & Pine Outfitters",
+      "status": "shipped",
+      "ordered_at": "2026-09-05",
+      "currency": "USD",
+      "items": [
+        {"sku": "BAM-MAT-L", "description": "Bamboo floor mat, large", "quantity": 75, "unit_price": 34.50}
+      ],
+      "shipment": {"shipped_at": "2026-09-15", "carrier": "Bluegate Freight", "tracking_number": "BGF-000-417-388", "eta": "2026-10-06"}
+    },
+    {
+      "order_id": "HL-10425",
+      "customer": "Sundial Market Cooperative",
+      "status": "processing",
+      "ordered_at": "2026-10-20",
+      "currency": "USD",
+      "items": [
+        {"sku": "TEA-JAS-250", "description": "Jasmine green tea, 250 g bags", "quantity": 300, "unit_price": 4.10},
+        {"sku": "TEA-OOL-500", "description": "Oolong tea, 500 g tins", "quantity": 60, "unit_price": 8.40}
+      ],
+      "processing": {"stage": "awaiting_stock", "estimated_ship_date": "2026-11-12"}
+    },
+    {
+      "order_id": "HL-10427",
+      "customer": "Copperleaf Home Goods",
+      "status": "cancelled",
+      "ordered_at": "2026-09-18",
+      "currency": "USD",
+      "items": [
+        {"sku": "LAC-BOX-M", "description": "Lacquer storage box, medium", "quantity": 50, "unit_price": 18.75}
+      ],
+      "cancellation": {"cancelled_at": "2026-09-20", "reason": "customer_request", "refund_status": "refunded"}
+    },
+    {
+      "order_id": "HL-10430",
+      "customer": "Northfield Kitchen Supply",
+      "status": "shipped",
+      "ordered_at": "2026-10-01",
+      "currency": "EUR",
+      "items": [
+        {"sku": "CST-WOK-32", "description": "Carbon steel wok, 32 cm", "quantity": 200, "unit_price": 15.20}
+      ],
+      "shipment": {"shipped_at": "2026-10-08", "carrier": "Saltway Ocean Lines", "tracking_number": "SOL-2026-55120", "eta": "2026-11-04"}
+    },
+    {
+      "order_id": "HL-10433",
+      "customer": "Marrow & Pine Outfitters",
+      "status": "processing",
+      "ordered_at": "2026-10-24",
+      "currency": "USD",
+      "items": [
+        {"sku": "BAM-MAT-S", "description": "Bamboo floor mat, small", "quantity": 150, "unit_price": 19.90}
+      ],
+      "processing": {"stage": "packing", "estimated_ship_date": "2026-11-03"}
+    },
+    {
+      "order_id": "HL-10436",
+      "customer": "Tidewater Gift Co.",
+      "status": "cancelled",
+      "ordered_at": "2026-10-03",
+      "currency": "USD",
+      "items": [
+        {"sku": "CER-VAS-12", "description": "Glazed ceramic vase, 12 in", "quantity": 30, "unit_price": 42.00}
+      ],
+      "cancellation": {"cancelled_at": "2026-10-10", "reason": "out_of_stock", "refund_status": "pending"}
+    },
+    {
+      "order_id": "HL-10438",
+      "customer": "Sundial Market Cooperative",
+      "status": "shipped",
+      "ordered_at": "2026-10-11",
+      "currency": "USD",
+      "items": [
+        {"sku": "TEA-JAS-250", "description": "Jasmine green tea, 250 g bags", "quantity": 500, "unit_price": 4.10}
+      ],
+      "shipment": {"shipped_at": "2026-10-17", "carrier": "Bluegate Freight", "tracking_number": "BGF-000-418-902", "eta": "2026-11-07"}
+    },
+    {
+      "order_id": "HL-10441",
+      "customer": "Northfield Kitchen Supply",
+      "status": "processing",
+      "ordered_at": "2026-10-28",
+      "currency": "EUR",
+      "items": [
+        {"sku": "CST-WOK-36", "description": "Carbon steel wok, 36 cm", "quantity": 80, "unit_price": 17.60},
+        {"sku": "BAM-UTN-04", "description": "Bamboo utensil set, 4 pieces", "quantity": 160, "unit_price": 6.30}
+      ],
+      "processing": {"stage": "payment_review", "estimated_ship_date": null}
+    }
+  ],
+  "unknown_order_ids": ["HL-10429"]
+}
