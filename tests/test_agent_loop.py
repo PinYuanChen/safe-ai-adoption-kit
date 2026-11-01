@@ -1,4 +1,6 @@
-from fake_client import FakeClient, text_response
+
+import json
+from fake_client import FakeClient, text_response, tool_use_response
 from safe_ai_kit.agent_loop import run_agent
 from safe_ai_kit.tools import LOOKUP_ORDER_TOOL
 
@@ -14,3 +16,25 @@ def test_returns_text_when_model_answers_directly(orders):
     assert client.calls[0]["tools"] == [LOOKUP_ORDER_TOOL]
 
 
+def test_runs_a_tool_and_returns_the_final_answer(orders):
+    question = "Has order HL-10421 shipped?"
+    reply = "Yes, order HL-10421 shipped on 2026-09-09 via Bluegate Freight (tracking BGF-000-417-221). It should arrive by 2026-09-30."
+    client = FakeClient([
+        tool_use_response("lookup_order", {"order_id": "HL-10421"}, tool_id="toolu_test_1"),
+        text_response(reply),
+    ])
+
+    answer = run_agent(question, client, orders)
+
+    assert answer == reply
+    assert len(client.calls) == 2
+
+    second_messages = client.calls[1]["messages"]
+    assert [m["role"] for m in second_messages] == ["user", "assistant", "user"]
+
+    tool_result = second_messages[2]["content"][0]
+    assert tool_result["type"] == "tool_result"
+    assert tool_result["tool_use_id"] == "toolu_test_1"
+    assert json.loads(tool_result["content"])["status"] == "shipped"
+
+    assert client.calls[1]["tools"] == [LOOKUP_ORDER_TOOL]

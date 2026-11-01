@@ -3,16 +3,19 @@
 The loop, tool definitions and tool-selection logic are written by the project
 owner (see CLAUDE.md, Learning mode). Only docstrings here are edited by Claude.
 """
-from safe_ai_kit.tools import LOOKUP_ORDER_TOOL
+
+import json
+from safe_ai_kit.tools import LOOKUP_ORDER_TOOL, lookup_order
 
 MODEL = "claude-haiku-5-5"
 
 def run_agent(question, client, orders):
     """Answer `question` by running the agent loop against `client`.
 
-    Sends the question to the model with `lookup_order` available and returns
-    the text of the model's reply; multiple text blocks are joined with newlines.
-    Tool calls are not handled yet.
+    Sends the question to the model with `lookup_order` available. Each time the
+    model asks for `lookup_order`, runs it and sends the result back, until the
+    model ends its turn; then returns the reply's text blocks joined with
+    newlines. There is no turn limit yet.
 
     `client` is anything exposing `client.messages.create(...)`: a real
     `anthropic.Anthropic()` (owner-run only) or `tests/fake_client.FakeClient`.
@@ -20,12 +23,26 @@ def run_agent(question, client, orders):
     model in full.
     """
     messages = [{"role": "user", "content": question}]
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=1024,
-        tools=[LOOKUP_ORDER_TOOL],
-        messages=messages,
-    )
-    texts = [block.text for block in response.content if block.type == "text"]
-    return "\n".join(texts)
-
+    while True:
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=1024,
+            tools=[LOOKUP_ORDER_TOOL],
+            messages=messages,
+        )
+        if response.stop_reason == "end_turn":
+            texts = [block.text for block in response.content if block.type == "text"]
+            return "\n".join(texts)
+        if response.stop_reason == "tool_use":
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in response.content:
+                if block.type == "tool_use" and block.name == "lookup_order":
+                    order_id = block.input["order_id"]
+                    result = lookup_order(order_id, orders)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": json.dumps(result),
+                    })
+            messages.append({"role": "user", "content": tool_results})
