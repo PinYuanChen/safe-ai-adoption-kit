@@ -5,9 +5,16 @@ owner (see CLAUDE.md, Learning mode). Only docstrings here are edited by Claude.
 """
 
 import json
+
 from safe_ai_kit.tools import LOOKUP_ORDER_TOOL, lookup_order
 
 MODEL = "claude-haiku-5-5"
+MAX_TURNS = 5
+
+
+class AgentLoopError(Exception):
+    """Raised when the agent loop cannot finish normally."""
+
 
 def run_agent(question, client, orders):
     """Answer `question` by running the agent loop against `client`.

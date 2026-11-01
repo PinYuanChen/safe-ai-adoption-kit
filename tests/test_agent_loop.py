@@ -1,7 +1,9 @@
-
 import json
+
+import pytest
+
 from fake_client import FakeClient, text_response, tool_use_response
-from safe_ai_kit.agent_loop import run_agent
+from safe_ai_kit.agent_loop import run_agent, AgentLoopError, MAX_TURNS
 from safe_ai_kit.tools import LOOKUP_ORDER_TOOL
 
 
@@ -38,3 +40,26 @@ def test_runs_a_tool_and_returns_the_final_answer(orders):
     assert json.loads(tool_result["content"])["status"] == "shipped"
 
     assert client.calls[1]["tools"] == [LOOKUP_ORDER_TOOL]
+
+
+def test_raises_when_model_keeps_calling_tools(orders):
+    client = FakeClient([
+        tool_use_response("lookup_order", {"order_id": "HL-10421"})
+        for _ in range(MAX_TURNS + 3)
+    ])
+
+    with pytest.raises(AgentLoopError, match="max turns"):
+        run_agent("Has order HL-10421 shipped?", client, orders)
+
+    assert len(client.calls) == MAX_TURNS
+
+
+def test_raises_on_unexpected_stop_reason(orders):
+    client = FakeClient([
+        text_response("Order HL-10421 shipped on", stop_reason="max_tokens"),
+    ])
+
+    with pytest.raises(AgentLoopError, match="unexpected stop_reason: max_tokens"):
+        run_agent("Has order HL-10421 shipped?", client, orders)
+
+    assert len(client.calls) == 1
