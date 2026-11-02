@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0001 uv run</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0001</span><span class="pill">第 1 課</span><span class="pill">Python 語法</span><span class="pill ok">已理解</span><span class="pill">2026-11-02</span></div>
+<h1>uv run：專案專屬的魔法結界</h1>
+
+<div class="tldr"><strong>一句話：</strong>在這個專案裡，跑任何 Python 東西前面都加 <code>uv run</code>。不加的話，你會跑到 macOS 內建、2021 年就退休的 Python 3.9。</div>
+
+<h2>背景</h2>
+<p>這台電腦上其實住著<b>兩個</b> Python：系統內建的 3.9，跟 uv 幫專案下載的 3.12。<code>anthropic</code> 和 <code>pytest</code> 只裝在後者的「虛擬環境」（<code>.venv/</code>）裡。直接打 <code>python</code> 會叫醒錯的那個，然後它會一臉茫然地說找不到套件。</p>
+
+<h2>觀念</h2>
+<figure>
+<svg viewBox="0 0 680 230" role="img" aria-label="python 指令跑到系統 3.9，uv run 跑到專案的 3.12 虛擬環境">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="box" x="30" y="30" width="180" height="50" rx="8"/><text class="mono" x="120" y="60" text-anchor="middle">python</text>
+<rect class="box" x="30" y="150" width="180" height="50" rx="8"/><text class="mono" x="120" y="180" text-anchor="middle">uv run python</text>
+<line class="arr" x1="210" y1="55" x2="398" y2="55" marker-end="url(#a)"/>
+<line class="arr" x1="210" y1="175" x2="398" y2="175" marker-end="url(#a)"/>
+<rect class="warn" x="400" y="20" width="250" height="70" rx="8"/><text class="th" x="525" y="48" text-anchor="middle">系統 Python 3.9</text><text class="s" x="525" y="70" text-anchor="middle">沒有 anthropic、沒有 pytest</text>
+<rect class="ok" x="400" y="140" width="250" height="70" rx="8"/><text class="th" x="525" y="168" text-anchor="middle">.venv（Python 3.12）</text><text class="s" x="525" y="190" text-anchor="middle">uv.lock 裡的套件全都在</text>
+</svg>
+<figcaption>同一個 python，兩個平行宇宙</figcaption>
+</figure>
+
+<h3>三個最常用的咒語</h3>
+<table>
+<tr><th>指令</th><th>作用</th></tr>
+<tr><td><code>uv run pytest</code></td><td>跑全部測試</td></tr>
+<tr><td><code>uv run pytest -v</code></td><td>同上，但每個測試都報名字（比較有成就感）</td></tr>
+<tr><td><code>uv run python</code></td><td>打開 REPL，<code>exit()</code> 離開</td></tr>
+</table>
+
+<h3>REPL 是你的沙盒</h3>
+<p>不確定某行語法會發生什麼事？別猜，丟進 REPL 試。<code>&gt;&gt;&gt;</code> 後面打什麼，它就立刻告訴你結果：</p>
+<pre><code>&gt;&gt;&gt; import json
+&gt;&gt;&gt; orders = json.load(open("tests/fixtures/orders.json"))["orders"]
+&gt;&gt;&gt; len(orders)
+9
+&gt;&gt;&gt; orders[0]["status"]
+'shipped'</code></pre>
+
+<h3>為什麼 import 得到 safe_ai_kit？</h3>
+<p><code>pyproject.toml</code> 裡有一行 <code>pythonpath = ["src", "tests"]</code>，等於告訴 pytest：「找模組時也去 src/ 和 tests/ 看看」。但這個設定<b>只對 pytest 有效</b>。自己在 REPL 裡 import 要這樣開：</p>
+<pre><code>PYTHONPATH=src uv run python</code></pre>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>ModuleNotFoundError: No module named 'safe_ai_kit'</b><br>在 pytest 外面跑，忘了 <code>PYTHONPATH=src</code>。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0005-pytest.html">0005 pytest 生存指南</a></li></ul>
+
+<nav class="pager"><span></span><a href="0002-dict-list-dot-bracket.html">0002 dict、list 與點和中括號 →</a></nav>
+</main>
+</body>
+</html>

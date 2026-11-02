@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0006 Agent loop 流程</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0006</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill ok">已理解</span><span class="pill">2026-11-02</span></div>
+<h1>Agent loop：一場你來我往的對話</h1>
+
+<div class="tldr"><strong>一句話：</strong>模型<b>不會</b>自己執行工具。它只會「點餐」，說「請幫我呼叫 lookup_order，參數是 HL-10421」。真正下廚的是你的 <code>run_tool</code>。</div>
+
+<h2>背景</h2>
+<p>「Agent 會用工具」聽起來很像模型自己伸手去查資料庫。其實它被關在 API 的另一頭，什麼都碰不到。它能做的只有開一張點菜單，然後等你把菜端回去。</p>
+
+<h2>觀念</h2>
+<h3>餐廳比喻</h3>
+<table>
+<tr><th>餐廳</th><th>Agent loop</th></tr>
+<tr><td>客人</td><td>使用者</td></tr>
+<tr><td>只會看菜單、開單的服務生</td><td>模型</td></tr>
+<tr><td>菜單</td><td><code>LOOKUP_ORDER_TOOL</code>（tool 定義）</td></tr>
+<tr><td>點菜單</td><td>tool_use 區塊</td></tr>
+<tr><td>廚房</td><td><code>run_tool</code> → <code>lookup_order</code></td></tr>
+<tr><td>端回去的菜</td><td>tool_result</td></tr>
+<tr><td>領班（決定什麼時候該收工）</td><td><code>run_agent</code> 的迴圈</td></tr>
+</table>
+
+<h3>一輪完整的流程</h3>
+<figure>
+<svg viewBox="0 0 680 470" role="img" aria-label="run_agent 呼叫 create，依 stop_reason 分成結束、跑工具、報錯三條路">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="box" x="240" y="16" width="200" height="44" rx="8"/><text class="th" x="340" y="43" text-anchor="middle">使用者的問題</text>
+<line class="arr" x1="340" y1="60" x2="340" y2="86" marker-end="url(#a)"/>
+<rect class="acc" x="200" y="88" width="280" height="56" rx="8"/><text class="th" x="340" y="112" text-anchor="middle">client.messages.create(...)</text><text class="s" x="340" y="132" text-anchor="middle">送出：model、tools、整段 messages</text>
+<line class="arr" x1="340" y1="144" x2="340" y2="170" marker-end="url(#a)"/>
+<rect class="box" x="240" y="172" width="200" height="44" rx="8"/><text class="th" x="340" y="199" text-anchor="middle">看 stop_reason</text>
+<path class="arr" d="M260 216 L110 262" marker-end="url(#a)"/>
+<line class="arr" x1="340" y1="216" x2="340" y2="260" marker-end="url(#a)"/>
+<path class="arr" d="M420 216 L570 262" marker-end="url(#a)"/>
+<rect class="ok" x="20" y="264" width="180" height="76" rx="8"/><text class="th" x="110" y="290" text-anchor="middle">end_turn</text><text class="s" x="110" y="312" text-anchor="middle">取出文字區塊</text><text class="s" x="110" y="330" text-anchor="middle">回傳答案，收工</text>
+<rect class="acc" x="240" y="264" width="200" height="132" rx="8"/><text class="th" x="340" y="290" text-anchor="middle">tool_use</text><text class="s" x="340" y="314" text-anchor="middle">1 把模型回覆加進 messages</text><text class="s" x="340" y="336" text-anchor="middle">2 每張點菜單 → run_tool</text><text class="s" x="340" y="358" text-anchor="middle">3 tool_result 包成 user 訊息</text><text class="s" x="340" y="380" text-anchor="middle">4 ↻ 回到 create() 再問一次</text>
+<rect class="warn" x="480" y="264" width="180" height="76" rx="8"/><text class="th" x="570" y="290" text-anchor="middle">其他</text><text class="s" x="570" y="312" text-anchor="middle">max_tokens、refusal…</text><text class="s" x="570" y="330" text-anchor="middle">raise AgentLoopError</text>
+<rect class="warn" x="160" y="412" width="360" height="44" rx="8"/><text class="th" x="340" y="439" text-anchor="middle">跑滿 MAX_TURNS（5 輪）→ raise</text>
+</svg>
+<figcaption>三條路：收工、再跑一輪、報錯。最下面那條是防止無限迴圈的保險絲</figcaption>
+</figure>
+
+<h3>client 可以換人</h3>
+<p><code>run_agent(question, client, orders)</code> 根本不在乎 <code>client</code> 是誰，只要它有 <code>client.messages.create(...)</code> 就好：</p>
+<ul>
+  <li><b>真的 <code>anthropic.Anthropic()</code>：</b>只有你自己用 <code>scripts/with-secrets.sh</code> 跑，會花錢。</li>
+  <li><b><code>FakeClient</code>：</b>所有測試用它，免費、可預測、一秒跑完（見 0009）。</li>
+</ul>
+<p>這種「只要長得像就能用」的設計叫 duck typing：走路像鴨子、叫聲像鴨子，Python 就當它是鴨子。</p>
+
+<h2>踩雷紀錄</h2>
+<div class="callout ok"><b>為什麼要有 MAX_TURNS？</b><br>如果模型一直點菜、永遠不說「好了」，沒有上限的迴圈會一直燒 token。這也是 Component 3 要測的「runaway loop」。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0007-messages-grow.html">0007 每一輪 messages 怎麼變長</a></li><li><a href="0008-anatomy.html">0008 點菜單和菜長什麼樣子</a></li></ul>
+
+<nav class="pager"><a href="0005-pytest.html">← 0005 pytest</a><a href="0007-messages-grow.html">0007 messages 怎麼長大 →</a></nav>
+</main>
+</body>
+</html>

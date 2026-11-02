@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 1 課筆記</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">← 學習軌跡</a>
+<div class="meta"><span class="num">LESSON 1</span><span class="pill">Component 1</span><span class="pill ok">進行中</span></div>
+<h1>第 1 課：Agent loop 的心跳</h1>
+
+<div class="tldr"><strong>這一課的目標：</strong>在 Anthropic SDK 上直接寫出 agent loop 和 tool use，不靠 framework，而且每一步都講得出為什麼。</div>
+
+<table>
+<tr><th>課程講義</th><td><a href="file:///Users/pinyuanchen/learn-applied-ai/lessons/0001-agent-loop-stop-reason.html">lessons/0001-agent-loop-stop-reason.html</a></td></tr>
+<tr><th>學習紀錄</th><td><a href="file:///Users/pinyuanchen/learn-applied-ai/learning-records/0001-max-tokens-is-not-a-cost-cap.md">0001 max_tokens 不是成本上限</a></td></tr>
+<tr><th>專案程式碼</th><td><code>src/safe_ai_kit/tools.py</code>、<code>src/safe_ai_kit/agent_loop.py</code></td></tr>
+<tr><th>筆記範圍</th><td>0001–0010</td></tr>
+</table>
+
+<h2>這一課的軌跡</h2>
+<ul class="timeline">
+  <li class="done"><span class="when">2026-10-26</span><br>上課：stop_reason 的三條路、模型只點餐不下廚。</li>
+  <li class="done"><span class="when">2026-10-28</span><br>學習紀錄：搞清楚 <code>max_tokens</code> 只管單次輸出，不管整場的成本。</li>
+  <li class="done"><span class="when">2026-10-31</span><br>專案 scaffolding：uv 專案、合成訂單、FakeClient。</li>
+  <li class="done"><span class="when">2026-11-02</span><br>自己寫 <code>lookup_order</code>、tool 定義、<code>run_agent</code>、<code>run_tool</code> 和測試。卡住的地方記成筆記 0001–0010。</li>
+  <li class="now"><span class="when">下一步</span><br>決定 <code>end_turn</code> 沒有文字時的行為，用真的 API 跑一次，然後進第 2 課。</li>
+</ul>
+
+<h2>筆記</h2>
+<h3>Python 語法（寫的時候卡住的）</h3>
+<ul class="toc">
+  <li><span class="num">0001</span><div><a href="0001-running-things.html">uv run：專案專屬的魔法結界</a><small>為什麼直接打 python 會找不到套件、REPL 怎麼玩</small></div></li>
+  <li><span class="num">0002</span><div><a href="0002-dict-list-dot-bracket.html">dict、list，以及「點」和「中括號」之爭</a><small>模型回的是物件、你送的是 dict</small></div></li>
+  <li><span class="num">0003</span><div><a href="0003-functions-loops.html">函式、迴圈、一行寫完的 list</a><small>縮排、for、list comprehension、f-string</small></div></li>
+  <li><span class="num">0004</span><div><a href="0004-errors.html">出錯的時候：raise 還是回傳錯誤？</a><small>None、isinstance、.get()，以及什麼時候該大聲失敗</small></div></li>
+  <li><span class="num">0005</span><div><a href="0005-pytest.html">pytest 生存指南</a><small>fixture、pytest.raises、收集錯誤、先紅後綠</small></div></li>
+</ul>
+
+<h3>元件與協作（看不懂它們怎麼串起來的）</h3>
+<ul class="toc">
+  <li><span class="num">0006</span><div><a href="0006-agent-loop-flow.html">Agent loop：一場你來我往的對話</a><small>模型不會自己跑工具，它只會「點餐」</small></div></li>
+  <li><span class="num">0007</span><div><a href="0007-messages-grow.html">messages 是怎麼長大的</a><small>模型沒有記憶，每次都要重講一遍</small></div></li>
+  <li><span class="num">0008</span><div><a href="0008-anatomy.html">解剖室：response、tool 定義、tool_result</a><small>每個東西裡面到底裝了什麼</small></div></li>
+  <li><span class="num">0009</span><div><a href="0009-fake-client.html">FakeClient：你是導演，它是照劇本念台詞的演員</a><small>FakeMessage、reply、client.calls 的關係</small></div></li>
+  <li><span class="num">0010</span><div><a href="0010-test-map.html">測試地圖與待辦</a><small>每個測試在保護什麼，以及之後要回頭想的事</small></div></li>
+</ul>
+
+<h2>這一課結束時，我應該能回答</h2>
+<ul>
+  <li>為什麼這個 agent loop 不會無限跑下去？</li>
+  <li>模型回了 <code>tool_use</code>，接下來 messages 要加哪兩則？</li>
+  <li>查不到訂單時，為什麼回傳錯誤 dict 而不是 raise？</li>
+  <li>FakeClient 測的是模型，還是我的迴圈？</li>
+</ul>
+</main>
+</body>
+</html>

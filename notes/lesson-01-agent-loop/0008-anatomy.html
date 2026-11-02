@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0008 解剖室</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0008</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill ok">已理解</span><span class="pill">2026-11-02</span></div>
+<h1>解剖室：response、tool 定義、tool_result</h1>
+
+<div class="tldr"><strong>一句話：</strong>三樣東西、三種方向。response 是模型給你的（物件），tool 定義是你給模型的菜單（dict），tool_result 是你端回去的菜（dict）。</div>
+
+<h2>背景</h2>
+<p>寫 loop 時一直在猜「這裡面到底有哪些欄位」。這篇把它們一個個剖開。</p>
+
+<h2>觀念</h2>
+<h3>① response：模型的回覆</h3>
+<figure>
+<svg viewBox="0 0 680 280" role="img" aria-label="response 物件包含 stop_reason、usage 和 content 區塊列表">
+<rect class="acc" x="20" y="16" width="640" height="252" rx="12"/>
+<text class="th" x="40" y="44">response（物件，用 . 取值）</text>
+<rect class="box" x="40" y="58" width="290" height="44" rx="6"/><text class="mono" x="56" y="85">.stop_reason  "tool_use"</text>
+<rect class="box" x="350" y="58" width="290" height="44" rx="6"/><text class="mono" x="366" y="85">.usage  .input/.output_tokens</text>
+<rect class="box" x="40" y="114" width="600" height="140" rx="8"/>
+<text class="mono" x="56" y="138">.content  ← list，可以混著好幾種區塊</text>
+<rect class="ok" x="56" y="152" width="270" height="88" rx="6"/><text class="th" x="72" y="176">TextBlock</text><text class="mono" x="72" y="200">.type = "text"</text><text class="mono" x="72" y="222">.text</text>
+<rect class="warn" x="346" y="152" width="278" height="88" rx="6"/><text class="th" x="362" y="176">ToolUseBlock</text><text class="mono" x="362" y="200">.type = "tool_use"</text><text class="mono" x="362" y="222">.id  .name  .input(dict)</text>
+</svg>
+<figcaption>一則回覆可以是「開場白 + 點菜單」，也可以是好幾段文字</figcaption>
+</figure>
+<table>
+<tr><th>stop_reason</th><th>白話</th><th>你的 loop 該做什麼</th></tr>
+<tr><td><code>end_turn</code></td><td>「我講完了」</td><td>取文字、回傳</td></tr>
+<tr><td><code>tool_use</code></td><td>「麻煩幫我查一下」</td><td>跑工具、再問一輪</td></tr>
+<tr><td><code>max_tokens</code></td><td>「我話還沒說完就被掐斷了」</td><td>raise，答案不完整</td></tr>
+<tr><td><code>refusal</code></td><td>「這個我不能回答」</td><td>raise</td></tr>
+</table>
+
+<h3>② tool 定義：給模型看的菜單</h3>
+<pre><code>LOOKUP_ORDER_TOOL = {
+    "name": "lookup_order",       # 菜名：要跟 run_tool 裡比對的一字不差
+    "description": "...",         # 菜色介紹：模型靠這段決定要不要點、怎麼點
+    "input_schema": {             # 點菜規則（JSON Schema）
+        "type": "object",
+        "properties": {"order_id": {"type": "string", "description": "..."}},
+        "required": ["order_id"],
+    },
+}</code></pre>
+<p><code>description</code> 是你跟模型溝通的唯一管道。你在裡面寫了「只給 5 位數就自己補 HL-」、「查不到就照實說，不要猜」，這些話直接決定模型的行為。寫菜單要像寫給一個很聰明、但第一天上班的新人。</p>
+
+<h3>③ tool_result：端回去的菜</h3>
+<figure>
+<svg viewBox="0 0 680 190" role="img" aria-label="成功和失敗兩種 tool_result 的欄位比較">
+<rect class="ok" x="20" y="16" width="310" height="160" rx="10"/>
+<text class="th" x="36" y="42">成功</text>
+<text class="mono" x="36" y="72">type: "tool_result"</text>
+<text class="mono" x="36" y="96">tool_use_id: block.id</text>
+<text class="mono" x="36" y="120">content: json.dumps(訂單)</text>
+<rect class="warn" x="350" y="16" width="310" height="160" rx="10"/>
+<text class="th" x="366" y="42">失敗</text>
+<text class="mono" x="366" y="72">type: "tool_result"</text>
+<text class="mono" x="366" y="96">tool_use_id: block.id</text>
+<text class="mono" x="366" y="120">is_error: True</text>
+<text class="mono" x="366" y="144">content: "缺了 order_id"</text>
+</svg>
+<figcaption>差別只有 is_error 和 content 的內容。tool_use_id 兩邊都必須有</figcaption>
+</figure>
+<ul>
+  <li><code>content</code> 要是<b>字串</b>，所以 <code>lookup_order</code> 回傳的 dict 要先 <code>json.dumps</code> 打包成 JSON 文字。</li>
+  <li><code>lookup_order</code> 查不到時回傳 <code>{"error": "Order not found", ...}</code>，不是 is_error。對模型來說，「查了，沒這筆」是一道正常的菜，只是菜名叫「沒貨」。</li>
+</ul>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>tool_use_id 對不上</b><br>真的 API 會直接拒絕下一次請求。FakeClient 不會檢查這件事，所以要靠測試 assert <code>tool_use_id</code>。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0004-errors.html">0004 什麼時候回傳 is_error</a></li><li><a href="0009-fake-client.html">0009 FakeMessage 就是假的 response</a></li></ul>
+
+<nav class="pager"><a href="0007-messages-grow.html">← 0007 messages 怎麼長大</a><a href="0009-fake-client.html">0009 FakeClient →</a></nav>
+</main>
+</body>
+</html>
