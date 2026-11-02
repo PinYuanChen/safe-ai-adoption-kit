@@ -54,12 +54,24 @@ def test_raises_when_model_keeps_calling_tools(orders):
     assert len(client.calls) == MAX_TURNS
 
 
-def test_raises_on_unexpected_stop_reason(orders):
+def test_raises_on_unexpected_stop_reason_max_tokens(orders):
     client = FakeClient([
         text_response("Order HL-10421 shipped on", stop_reason="max_tokens"),
     ])
 
-    with pytest.raises(AgentLoopError, match="unexpected stop_reason: max_tokens"):
+    with pytest.raises(AgentLoopError, match="stop_reason: max_tokens"):
+
+        run_agent("Has order HL-10421 shipped?", client, orders)
+
+    assert len(client.calls) == 1
+
+
+def test_raises_on_unexpected_stop_reason_refusal(orders):
+    client = FakeClient([
+        text_response("Order HL-10421 shipped on", stop_reason="refusal"),
+    ])
+
+    with pytest.raises(AgentLoopError, match="stop_reason: refusal"):
         run_agent("Has order HL-10421 shipped?", client, orders)
 
     assert len(client.calls) == 1

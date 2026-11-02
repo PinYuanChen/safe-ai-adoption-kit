@@ -22,7 +22,8 @@ def run_agent(question, client, orders):
     Sends the question to the model with `lookup_order` available. Each time the
     model asks for `lookup_order`, runs it and sends the result back, until the
     model ends its turn; then returns the reply's text blocks joined with
-    newlines. There is no turn limit yet.
+    newlines. Raises AgentLoopError if the model has not finished within
+    MAX_TURNS calls, or if a reply stops for an unexpected reason.
 
     `client` is anything exposing `client.messages.create(...)`: a real
     `anthropic.Anthropic()` (owner-run only) or `tests/fake_client.FakeClient`.
@@ -30,7 +31,7 @@ def run_agent(question, client, orders):
     model in full.
     """
     messages = [{"role": "user", "content": question}]
-    while True:
+    for turn in range(MAX_TURNS):
         response = client.messages.create(
             model=MODEL,
             max_tokens=1024,
@@ -40,7 +41,7 @@ def run_agent(question, client, orders):
         if response.stop_reason == "end_turn":
             texts = [block.text for block in response.content if block.type == "text"]
             return "\n".join(texts)
-        if response.stop_reason == "tool_use":
+        elif response.stop_reason == "tool_use":
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []
             for block in response.content:
@@ -53,3 +54,6 @@ def run_agent(question, client, orders):
                         "content": json.dumps(result),
                     })
             messages.append({"role": "user", "content": tool_results})
+        else:
+            raise AgentLoopError(f"stop_reason: {response.stop_reason} on turn {turn + 1}")
+    raise AgentLoopError(f"stop_reason: max turns {MAX_TURNS} reached")

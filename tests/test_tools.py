@@ -1,5 +1,6 @@
 from safe_ai_kit.tools import lookup_order
 
+
 def test_finds_a_shipped_order(orders):
     # Test case 1: Lookup existing order
     result = lookup_order("HL-10421", orders)
