@@ -45,15 +45,41 @@ def run_agent(question, client, orders):
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []
             for block in response.content:
-                if block.type == "tool_use" and block.name == "lookup_order":
-                    order_id = block.input["order_id"]
-                    result = lookup_order(order_id, orders)
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": json.dumps(result),
-                    })
+                if block.type == "tool_use":
+                    tool_results.append(run_tool(block, orders))
             messages.append({"role": "user", "content": tool_results})
         else:
             raise AgentLoopError(f"stop_reason: {response.stop_reason} on turn {turn + 1}")
     raise AgentLoopError(f"stop_reason: max turns {MAX_TURNS} reached")
+
+
+def run_tool(block, orders) -> dict:
+    if block.name == "lookup_order":
+        order_id = block.input.get("order_id")
+        if order_id is None:
+            return {
+                "type": "tool_result",
+                "is_error": True,
+                "tool_use_id": block.id,
+                "content": "lookup_order is missing the required 'order_id' argument.",
+            }
+        if not isinstance(order_id, str):
+            return {
+                "type": "tool_result",
+                "is_error": True,
+                "tool_use_id": block.id,
+                "content": f"lookup_order needs 'order_id' as a string, got {type(order_id).__name__}.",
+            }
+        result = lookup_order(order_id, orders)
+        return {
+            "type": "tool_result",
+            "tool_use_id": block.id,
+            "content": json.dumps(result),
+        }
+    else:
+        return {
+            "type": "tool_result",
+            "is_error": True,
+            "tool_use_id": block.id,
+            "content": f"Tool {block.name} is not available in this agent loop.",
+        }
