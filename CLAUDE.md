@@ -21,6 +21,14 @@ I am learning applied AI engineering through this project. Lessons live in `~/le
 - **Claude may write:** boilerplate, CLI scaffolding, test fixtures and synthetic data, Dockerfiles, CI config, and docs formatting.
 - When I ask for a review, explain *why* something is risky or wrong instead of only giving the fix.
 
+## Learning notes (`notes/`)
+When I say "記筆記" or ask to record what I didn't understand, write it here (Claude may write these; it is docs, not project code).
+- Layout: `notes/index.html` is the learning timeline (one card per lesson); `notes/lesson-NN-<slug>/` holds that lesson's `index.html` and its notes. Lesson N matches Component N and the lesson of the same number in `~/learn-applied-ai/lessons/` (read it for the title; never write there).
+- Notes are numbered globally (`0011-<slug>.html` continues after `0010`) and never renumbered or deleted; mark an outdated note's status pill as 「已取代」 and link the replacement.
+- Each note follows the existing ADR-style format: one-line summary, 背景 (what confused me), 觀念 (inline SVG diagrams using the classes in `notes/style.css`), 踩雷紀錄, 相關筆記, prev/next pager. Traditional Chinese, technical terms in English, light and humorous, based only on what actually came up.
+- When adding notes: update the lesson's `index.html` (note list and timeline entry with the date), and when starting a new lesson, add its folder and turn its card in `notes/index.html` from `todo` into a linked card.
+- Check that every relative link resolves, then show me the result before committing.
+
 ## Security rules
 - Never put secrets in code, config, commits, or chat. Secrets live in the macOS Keychain and are injected at run time by `scripts/with-secrets.sh`, which only I run (it refuses to start inside Claude Code). Claude Code works with mocked LLM clients; real API runs are mine.
 - `.env*` files and key files must never be read or created with real values; `.env.example` holds names only.
