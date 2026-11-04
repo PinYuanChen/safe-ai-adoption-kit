@@ -24,7 +24,8 @@ def run_agent(question, client, orders):
     model asks for `lookup_order`, runs it and sends the result back, until the
     model ends its turn; then returns the reply's text blocks joined with
     newlines. Raises AgentLoopError if the model has not finished within
-    MAX_TURNS calls, or if a reply stops for an unexpected reason.
+    MAX_TURNS calls, ends its turn with no text, or stops for an unexpected
+    reason.
 
     `client` is anything exposing `client.messages.create(...)`: a real
     `anthropic.Anthropic()` (owner-run only) or `tests/fake_client.FakeClient`.

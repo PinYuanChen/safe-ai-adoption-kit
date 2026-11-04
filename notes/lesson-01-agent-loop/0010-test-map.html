@@ -47,11 +47,12 @@
 <tr><td>工具當掉不外洩</td><td>exception 的內容不進 tool_result</td><td>內部細節又送給模型了</td></tr>
 <tr><td>多個文字區塊</td><td>用 <code>\n</code> 依序接起來</td><td>只取了第一段</td></tr>
 <tr><td>工具前的開場白</td><td>不混進答案，但保留在對話紀錄</td><td>使用者看到「Let me check」黏在答案上</td></tr>
-<tr><td><code>end_turn</code> 沒有文字</td><td>目前回傳 <code>""</code></td><td>行為改了，要確認是不是故意的</td></tr>
+<tr><td><code>end_turn</code> 沒有文字 / 只有空白</td><td>raise，不回傳一片空白</td><td>使用者又會收到空白回答</td></tr>
+<tr><td>CLI（3 個）</td><td>答案在 stdout、trace 在 stderr、失敗時 exit 1</td><td>輸出混在一起，或失敗還回報成功</td></tr>
 </table>
 
-<h2>待決定</h2>
-<div class="callout"><b>end_turn 卻一個字都沒說，該怎麼辦？</b><br>目前回傳空字串，呼叫的人很難察覺。建議比照 <code>max_tokens</code>：拿不到答案就 raise，不要假裝成功。決定後更新上表和測試。</div>
+<h2>已決定</h2>
+<div class="callout ok"><b>end_turn 卻一個字都沒說，該怎麼辦？</b><br>比照 <code>max_tokens</code>：拿不到答案就 raise，不要假裝成功。上表和測試都更新了，經過見 0014。</div>
 
 <h2>之後要回頭想的事</h2>
 <table>
@@ -64,7 +65,7 @@
 </table>
 
 <h2>相關筆記</h2>
-<ul><li><a href="0005-pytest.html">0005 pytest 生存指南</a></li><li><a href="0009-fake-client.html">0009 FakeClient</a></li><li><a href="0013-tool-crash.html">0013 第一個安全測試</a></li></ul>
+<ul><li><a href="0005-pytest.html">0005 pytest 生存指南</a></li><li><a href="0009-fake-client.html">0009 FakeClient</a></li><li><a href="0013-tool-crash.html">0013 第一個安全測試</a></li><li><a href="0014-first-real-run.html">0014 真的模型才測得出來的事</a></li></ul>
 
 <nav class="pager"><a href="0009-fake-client.html">← 0009 FakeClient</a><a href="0011-stop-or-ask-again.html">0011 該停還是再問一次 →</a></nav>
 </main>

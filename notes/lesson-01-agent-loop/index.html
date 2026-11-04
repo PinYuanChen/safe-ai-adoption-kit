@@ -9,7 +9,7 @@
 <body>
 <main>
 <a class="back" href="../index.html">← 學習軌跡</a>
-<div class="meta"><span class="num">LESSON 1</span><span class="pill">Component 1</span><span class="pill ok">進行中</span></div>
+<div class="meta"><span class="num">LESSON 1</span><span class="pill">Component 1</span><span class="pill ok">已完成</span></div>
 <h1>第 1 課：Agent loop 的心跳</h1>
 
 <div class="tldr"><strong>這一課的目標：</strong>在 Anthropic SDK 上直接寫出 agent loop 和 tool use，不靠 framework，而且每一步都講得出為什麼。</div>
@@ -17,8 +17,8 @@
 <table>
 <tr><th>課程講義</th><td><a href="file:///Users/pinyuanchen/learn-applied-ai/lessons/0001-agent-loop-stop-reason.html">lessons/0001-agent-loop-stop-reason.html</a></td></tr>
 <tr><th>學習紀錄</th><td><a href="file:///Users/pinyuanchen/learn-applied-ai/learning-records/0001-max-tokens-is-not-a-cost-cap.md">0001 max_tokens 不是成本上限</a></td></tr>
-<tr><th>專案程式碼</th><td><code>src/safe_ai_kit/tools.py</code>、<code>src/safe_ai_kit/agent_loop.py</code></td></tr>
-<tr><th>筆記範圍</th><td>0001–0013</td></tr>
+<tr><th>專案程式碼</th><td><code>src/safe_ai_kit/tools.py</code>、<code>src/safe_ai_kit/agent_loop.py</code>、<code>src/safe_ai_kit/cli.py</code></td></tr>
+<tr><th>筆記範圍</th><td>0001–0014</td></tr>
 </table>
 
 <h2>這一課的軌跡</h2>
@@ -28,7 +28,8 @@
   <li class="done"><span class="when">2026-10-31</span><br>專案 scaffolding：uv 專案、合成訂單、FakeClient。</li>
   <li class="done"><span class="when">2026-11-02</span><br>自己寫 <code>lookup_order</code>、tool 定義、<code>run_agent</code>、<code>run_tool</code> 和測試。卡住的地方記成筆記 0001–0010。</li>
   <li class="done"><span class="when">2026-11-04</span><br>補完第 4、5 步：回合上限、白名單擋下不認得的 <code>stop_reason</code>、tool 層級的錯誤、不把內部細節送給模型。卡住的地方記成筆記 0011–0013。</li>
-  <li class="now"><span class="when">下一步</span><br>決定 <code>end_turn</code> 沒有文字時的行為，用真的 API 跑一次，然後進第 2 課。</li>
+  <li class="done"><span class="when">2026-11-04</span><br>第一次用真的 API 跑了六個問題，看到 FakeClient 測不出來的行為。<code>end_turn</code> 沒有文字時決定 raise。Component 1 完成，記成筆記 0014。</li>
+  <li class="now"><span class="when">下一步</span><br>進第 2 課：multi-agent orchestrator。</li>
 </ul>
 
 <h2>筆記</h2>
@@ -57,6 +58,11 @@
   <li><span class="num">0013</span><div><a href="0013-tool-crash.html">工具當掉時：細節留給自己，模型只拿通用訊息</a><small>try / except、str(e) 外洩、stderr、第一個安全測試</small></div></li>
 </ul>
 
+<h3>真實 API（第一次接上真的模型）</h3>
+<ul class="toc">
+  <li><span class="num">0014</span><div><a href="0014-first-real-run.html">第一次接上真的模型：FakeClient 看不到的事</a><small>金鑰走的路、六題結果、token 花在哪、模型說太多</small></div></li>
+</ul>
+
 <h2>這一課結束時，我應該能回答</h2>
 <ul>
   <li>為什麼這個 agent loop 不會無限跑下去？</li>
@@ -66,6 +72,7 @@
   <li>為什麼 <code>refusal</code> 呼叫 1 次就停，不存在的 tool 卻要呼叫 2 次？</li>
   <li>為什麼 <code>orders</code> 不能放進 <code>input_schema</code>？（不是因為 token）</li>
   <li>tool 當掉時，為什麼不把 <code>str(e)</code> 交給模型？</li>
+  <li>FakeClient 全綠之後，為什麼還要用真的模型跑一次？跑一次又為什麼還不夠？</li>
 </ul>
 </main>
 </body>

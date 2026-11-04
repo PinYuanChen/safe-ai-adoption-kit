@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0014 第一次接上真的模型</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0014</span><span class="pill">第 1 課</span><span class="pill">真實 API</span><span class="pill ok">已理解</span><span class="pill">2026-11-04</span></div>
+<h1>第一次接上真的模型：FakeClient 看不到的事</h1>
+
+<div class="tldr"><strong>一句話：</strong>FakeClient 證明我的迴圈寫對了；只有真的模型，才看得出它實際會怎麼用這個迴圈。</div>
+
+<h2>背景</h2>
+<p>測試全綠，但 FakeClient 叫它說什麼它就說什麼。模型到底會不會叫 tool、會不會補上 <code>HL-</code>、會不會編造內容，都要跑一次才知道。我也一度搞不清楚金鑰要放哪裡、指令要在哪裡跑。</p>
+
+<h2>觀念</h2>
+<h3>金鑰走的路</h3>
+<figure>
+<svg viewBox="0 0 680 196" role="img" aria-label="金鑰從 Console 存進 Keychain，由 with-secrets 在人確認後放進環境變數交給 SDK；Claude Code 的 shell 會被拒絕">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="box" x="12" y="16" width="112" height="60" rx="8"/><text class="th" x="68" y="42" text-anchor="middle">Console</text><text class="s" x="68" y="62" text-anchor="middle">只顯示一次</text>
+<path class="arr" d="M124 46 L148 46" marker-end="url(#a)"/>
+<rect class="ok" x="148" y="16" width="112" height="60" rx="8"/><text class="th" x="204" y="42" text-anchor="middle">Keychain</text><text class="s" x="204" y="62" text-anchor="middle">唯一存放處</text>
+<path class="arr" d="M260 46 L284 46" marker-end="url(#a)"/>
+<rect class="acc" x="284" y="16" width="112" height="60" rx="8"/><text class="th" x="340" y="42" text-anchor="middle">with-secrets</text><text class="s" x="340" y="62" text-anchor="middle">密碼加上 y</text>
+<path class="arr" d="M396 46 L420 46" marker-end="url(#a)"/>
+<rect class="box" x="420" y="16" width="112" height="60" rx="8"/><text class="th" x="476" y="42" text-anchor="middle">環境變數</text><text class="s" x="476" y="62" text-anchor="middle">只給這個程序</text>
+<path class="arr" d="M532 46 L556 46" marker-end="url(#a)"/>
+<rect class="box" x="556" y="16" width="112" height="60" rx="8"/><text class="th" x="612" y="42" text-anchor="middle">SDK → API</text><text class="s" x="612" y="62" text-anchor="middle">真的花錢</text>
+<rect class="warn" x="244" y="124" width="192" height="56" rx="8"/><text class="th" x="340" y="148" text-anchor="middle">Claude Code 的 shell</text><text class="s" x="340" y="168" text-anchor="middle">進不去：腳本直接拒絕</text>
+<path class="dash" d="M340 124 L340 80"/>
+</svg>
+<figcaption>金鑰不進檔案、不進聊天；指令和輸出可以貼，金鑰不行</figcaption>
+</figure>
+
+<h3>每次呼叫都看得到：TracingClient</h3>
+<p><code>run_agent</code> 只回傳最終答案。<code>cli.py</code>（Claude 寫的 scaffolding）在 client 外面包一層，每次呼叫模型就印一行到 stderr，我的 <code>run_agent</code> 完全不用改：</p>
+<pre><code>[model] stop_reason=tool_use tool_calls=['lookup_order({"order_id": "HL-10421"})'] input_tokens=657 output_tokens=55</code></pre>
+
+<h3>六題的結果</h3>
+<table>
+<tr><th>問題</th><th>回合</th><th>模型做了什麼</th><th>結果</th></tr>
+<tr><td>HL-10421 出貨了嗎</td><td>2</td><td>查一次，回答出貨資訊</td><td>資料全對</td></tr>
+<tr><td>HL-10429 出貨了嗎</td><td>2</td><td>查一次，說查不到</td><td>沒有編造訂單內容</td></tr>
+<tr><td>order 10421 的狀態</td><td>2</td><td>自己補上 <code>HL-</code></td><td>description 有效，但說太多（見踩雷）</td></tr>
+<tr><td>你能幫我做什麼</td><td>1</td><td>沒叫 tool，直接回答</td><td>正確</td></tr>
+<tr><td>取消 HL-10425</td><td>2</td><td>先查訂單，再說做不到</td><td>沒假裝成功，但多查了一次（見踩雷）</td></tr>
+<tr><td>HL-10421 和 HL-10429</td><td>2</td><td><b>同一則回覆</b>叫兩個 tool</td><td>結果沒對調，API 也接受了格式</td></tr>
+</table>
+<p>最後一題是最有價值的驗證：<code>tool_use_id</code> 對不上，或結果沒放在同一則 <code>user</code> 訊息裡，API 會回 400。它接受了，代表 <code>tool_results</code> 的組法是對的。查不到的 dict 裡帶 <code>order_id</code>，也正好用在這個情境。</p>
+
+<h3>token 花在哪裡</h3>
+<table>
+<tr><th>問題</th><th>第 1 次 input</th><th>第 2 次 input</th></tr>
+<tr><td>HL-10421（整筆訂單）</td><td>657</td><td>958</td></tr>
+<tr><td>HL-10429（查不到）</td><td>657</td><td>740</td></tr>
+</table>
+<ul>
+  <li>每次呼叫都先付約 650 個 input tokens，問題很短，大部分是 tool 定義。打招呼那題也一樣。</li>
+  <li>整筆訂單比查不到多了 218 個 tokens（958 − 740），證實 token 主要花在 <code>tool_result</code>。</li>
+</ul>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>問狀態，卻連客戶和單價都說了</b><br>第 3 題只問狀態，第 5 題只要取消，模型都列出了客戶名稱、品項或單價。第 1 題問「出貨了嗎」就沒有。<code>lookup_order</code> 回傳整筆，模型拿到什麼就可能說什麼。再加上 IDOR（見 0012），猜到 5 位數字就可能看到別家的採購內容。這不能靠模型自己節制，要在 Component 6 從 tool 的回傳值解決。</div>
+<div class="callout"><b>模型補了資料裡沒有的東西</b><br>第 5 題叫使用者聯絡「order support or fulfilment team」，第 2 題說有「confirmation email」可以幫忙查。這個團隊不在任何資料裡，tool 也只能用編號查。不嚴重，但正是答案品質 eval 要抓的東西。</div>
+<div class="callout"><b>要取消訂單，卻先查了一次</b><br>這題不查也能回答，多花了一輪。推測跟 description 寫的「Use this whenever the user asks about a specific order」有關，但只跑一次還不能確定。這是 Component 3 的 trajectory 題目。</div>
+<div class="callout ok"><b>end_turn 卻沒有文字：決定 raise</b><br>原本回傳空字串，使用者只會看到一片空白。手上也沒有新資訊，再問一次沒有意義（見 0011）。所以改成 raise <code>AgentLoopError</code>，只有空白字元也算。</div>
+<div class="callout ok"><b>這些都只是「跑一次」的觀察</b><br>每題只跑了一次，問法也不同，所以看不出模型每次是否都會這樣。eval 要同一題跑很多次才算數。<code>is_error</code> 的路徑也還沒碰過真的 API，模型這幾次都沒有叫錯 tool 或傳錯參數，留給 Component 3 去打。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0009-fake-client.html">0009 FakeClient 是照劇本念台詞的演員</a></li><li><a href="0010-test-map.html">0010 測試地圖與待辦</a></li><li><a href="0012-trust-boundary.html">0012 信任邊界和 IDOR</a></li></ul>
+
+<nav class="pager"><a href="0013-tool-crash.html">← 0013 工具當掉時</a><a href="index.html">回第 1 課 →</a></nav>
+</main>
+</body>
+</html>
