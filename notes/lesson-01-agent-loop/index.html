@@ -18,7 +18,7 @@
 <tr><th>課程講義</th><td><a href="file:///Users/pinyuanchen/learn-applied-ai/lessons/0001-agent-loop-stop-reason.html">lessons/0001-agent-loop-stop-reason.html</a></td></tr>
 <tr><th>學習紀錄</th><td><a href="file:///Users/pinyuanchen/learn-applied-ai/learning-records/0001-max-tokens-is-not-a-cost-cap.md">0001 max_tokens 不是成本上限</a></td></tr>
 <tr><th>專案程式碼</th><td><code>src/safe_ai_kit/tools.py</code>、<code>src/safe_ai_kit/agent_loop.py</code></td></tr>
-<tr><th>筆記範圍</th><td>0001–0010</td></tr>
+<tr><th>筆記範圍</th><td>0001–0013</td></tr>
 </table>
 
 <h2>這一課的軌跡</h2>
@@ -27,6 +27,7 @@
   <li class="done"><span class="when">2026-10-28</span><br>學習紀錄：搞清楚 <code>max_tokens</code> 只管單次輸出，不管整場的成本。</li>
   <li class="done"><span class="when">2026-10-31</span><br>專案 scaffolding：uv 專案、合成訂單、FakeClient。</li>
   <li class="done"><span class="when">2026-11-02</span><br>自己寫 <code>lookup_order</code>、tool 定義、<code>run_agent</code>、<code>run_tool</code> 和測試。卡住的地方記成筆記 0001–0010。</li>
+  <li class="done"><span class="when">2026-11-04</span><br>補完第 4、5 步：回合上限、白名單擋下不認得的 <code>stop_reason</code>、tool 層級的錯誤、不把內部細節送給模型。卡住的地方記成筆記 0011–0013。</li>
   <li class="now"><span class="when">下一步</span><br>決定 <code>end_turn</code> 沒有文字時的行為，用真的 API 跑一次，然後進第 2 課。</li>
 </ul>
 
@@ -49,12 +50,22 @@
   <li><span class="num">0010</span><div><a href="0010-test-map.html">測試地圖與待辦</a><small>每個測試在保護什麼，以及之後要回頭想的事</small></div></li>
 </ul>
 
+<h3>錯誤與邊界（第 4、5 步卡住的）</h3>
+<ul class="toc">
+  <li><span class="num">0011</span><div><a href="0011-stop-or-ask-again.html">該停下來，還是該再問模型一次？</a><small>client.calls 在數什麼、白名單 vs 黑名單、fail closed</small></div></li>
+  <li><span class="num">0012</span><div><a href="0012-trust-boundary.html">信任邊界：模型給的東西，進門要查</a><small>input_schema 是表單、先認 tool 再驗參數、不要幫它修</small></div></li>
+  <li><span class="num">0013</span><div><a href="0013-tool-crash.html">工具當掉時：細節留給自己，模型只拿通用訊息</a><small>try / except、str(e) 外洩、stderr、第一個安全測試</small></div></li>
+</ul>
+
 <h2>這一課結束時，我應該能回答</h2>
 <ul>
   <li>為什麼這個 agent loop 不會無限跑下去？</li>
   <li>模型回了 <code>tool_use</code>，接下來 messages 要加哪兩則？</li>
   <li>查不到訂單時，為什麼回傳錯誤 dict 而不是 raise？</li>
   <li>FakeClient 測的是模型，還是我的迴圈？</li>
+  <li>為什麼 <code>refusal</code> 呼叫 1 次就停，不存在的 tool 卻要呼叫 2 次？</li>
+  <li>為什麼 <code>orders</code> 不能放進 <code>input_schema</code>？（不是因為 token）</li>
+  <li>tool 當掉時，為什麼不把 <code>str(e)</code> 交給模型？</li>
 </ul>
 </main>
 </body>

@@ -5,6 +5,7 @@ owner (see CLAUDE.md, Learning mode). Only docstrings here are edited by Claude.
 """
 
 import json
+import sys
 
 from safe_ai_kit.tools import LOOKUP_ORDER_TOOL, lookup_order
 
@@ -70,12 +71,21 @@ def run_tool(block, orders) -> dict:
                 "tool_use_id": block.id,
                 "content": f"lookup_order needs 'order_id' as a string, got {type(order_id).__name__}.",
             }
-        result = lookup_order(order_id, orders)
-        return {
-            "type": "tool_result",
-            "tool_use_id": block.id,
-            "content": json.dumps(result),
-        }
+        try:
+            result = lookup_order(order_id, orders)
+            return {
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": json.dumps(result),
+            }
+        except Exception as e:
+            print(f"lookup_order failed: {type(e).__name__}: {e}", file=sys.stderr)
+            return {
+                "type": "tool_result",
+                "is_error": True,
+                "tool_use_id": block.id,
+                "content": "Lookup_order failed due to an internal error. Tell the user the order system is temporarily unavailable and to try again later.",
+            }
     else:
         return {
             "type": "tool_result",

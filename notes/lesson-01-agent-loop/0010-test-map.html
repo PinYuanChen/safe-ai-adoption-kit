@@ -9,7 +9,7 @@
 <body>
 <main>
 <a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
-<div class="meta"><span class="num">NOTE 0010</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill">持續補充</span><span class="pill">2026-11-02</span></div>
+<div class="meta"><span class="num">NOTE 0010</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill">持續補充</span><span class="pill">2026-11-04</span></div>
 <h1>測試地圖與待辦</h1>
 
 <div class="tldr"><strong>一句話：</strong>每個測試都是一個保全，各自顧一扇門。這張地圖記錄哪扇門有人顧、哪扇還空著。</div>
@@ -42,6 +42,9 @@
 <tr><td><code>max_tokens</code> / <code>refusal</code></td><td>沒拿到完整答案就明確失敗</td><td>在假裝成功</td></tr>
 <tr><td>未知的 tool</td><td>回 is_error 給模型，不當掉</td><td>模型亂點菜時 agent 會翻桌</td></tr>
 <tr><td>缺參數 / 型別錯誤</td><td>回 is_error，不 KeyError</td><td>同上</td></tr>
+<tr><td>未知的 tool，沒帶 order_id</td><td>訊息說的是模型叫的 tool</td><td>又變成先驗參數、再認 tool</td></tr>
+<tr><td>工具當掉</td><td>回 is_error，agent 不當掉</td><td><code>try</code> / <code>except</code> 不見了</td></tr>
+<tr><td>工具當掉不外洩</td><td>exception 的內容不進 tool_result</td><td>內部細節又送給模型了</td></tr>
 <tr><td>多個文字區塊</td><td>用 <code>\n</code> 依序接起來</td><td>只取了第一段</td></tr>
 <tr><td>工具前的開場白</td><td>不混進答案，但保留在對話紀錄</td><td>使用者看到「Let me check」黏在答案上</td></tr>
 <tr><td><code>end_turn</code> 沒有文字</td><td>目前回傳 <code>""</code></td><td>行為改了，要確認是不是故意的</td></tr>
@@ -55,13 +58,15 @@
 <tr><th>Component</th><th>問題</th></tr>
 <tr><td>3 紅隊測試</td><td>tool_result 是<b>不可信內容</b>。如果訂單備註裡藏了「忽略之前的指示」，模型會照做嗎？</td></tr>
 <tr><td>4 Telemetry</td><td><code>response.usage</code> 的 token 數要記下來，才算得出每個問題花多少錢</td></tr>
+<tr><td>4 Telemetry</td><td>tool 當掉的細節目前印到 stderr，之後改寫進 trace</td></tr>
 <tr><td>6 權限控管</td><td>資料最小化：模型真的需要看到客戶名稱和單價嗎？只回傳回答問題需要的欄位</td></tr>
+<tr><td>6 權限控管</td><td>IDOR：<code>lookup_order</code> 不檢查問的人有沒有權限，見 0012</td></tr>
 </table>
 
 <h2>相關筆記</h2>
-<ul><li><a href="0005-pytest.html">0005 pytest 生存指南</a></li><li><a href="0009-fake-client.html">0009 FakeClient</a></li></ul>
+<ul><li><a href="0005-pytest.html">0005 pytest 生存指南</a></li><li><a href="0009-fake-client.html">0009 FakeClient</a></li><li><a href="0013-tool-crash.html">0013 第一個安全測試</a></li></ul>
 
-<nav class="pager"><a href="0009-fake-client.html">← 0009 FakeClient</a><a href="index.html">回第 1 課 →</a></nav>
+<nav class="pager"><a href="0009-fake-client.html">← 0009 FakeClient</a><a href="0011-stop-or-ask-again.html">0011 該停還是再問一次 →</a></nav>
 </main>
 </body>
 </html>

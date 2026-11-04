@@ -166,3 +166,26 @@ def test_unknown_tool_without_order_id(orders):
     assert result["is_error"] is True
     assert "cancel_order" in result["content"]
     assert "lookup_order" not in result["content"]
+
+
+def test_tool_crash_is_reported_to_the_model():
+    block = ToolUseBlock(id="toolu_crash", name="lookup_order", input={"order_id": "HL-10421"})
+
+    result = run_tool(block, [{"id": "HL-10421"}])
+
+    assert result["is_error"] is True
+    assert result["tool_use_id"] == "toolu_crash"
+
+
+class BrokenStore:
+    def __iter__(self):
+        raise RuntimeError("SECRET-INTERNAL-DETAIL")
+
+
+def test_tool_crash_does_not_leak_internal_details():
+    block = ToolUseBlock(id="toolu_leak", name="lookup_order", input={"order_id": "HL-10421"})
+
+    result = run_tool(block, BrokenStore())
+
+    assert result["is_error"] is True
+    assert "SECRET-INTERNAL-DETAIL" not in result["content"]
