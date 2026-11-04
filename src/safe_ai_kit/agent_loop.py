@@ -51,7 +51,7 @@ def run_agent(question, client, orders):
             messages.append({"role": "user", "content": tool_results})
         else:
             raise AgentLoopError(f"stop_reason: {response.stop_reason} on turn {turn + 1}")
-    raise AgentLoopError(f"stop_reason: max turns {MAX_TURNS} reached")
+    raise AgentLoopError(f"max turns {MAX_TURNS} reached")
 
 
 def run_tool(block, orders) -> dict:
@@ -84,7 +84,7 @@ def run_tool(block, orders) -> dict:
                 "type": "tool_result",
                 "is_error": True,
                 "tool_use_id": block.id,
-                "content": "Lookup_order failed due to an internal error. Tell the user the order system is temporarily unavailable and to try again later.",
+                "content": "lookup_order failed due to an internal error. Tell the user the order system is temporarily unavailable and to try again later.",
             }
     else:
         return {
