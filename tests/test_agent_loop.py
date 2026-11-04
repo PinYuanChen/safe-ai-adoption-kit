@@ -152,12 +152,20 @@ def test_text_before_a_tool_call_is_kept_in_history_but_not_in_the_answer(orders
     assert assistant_turn["content"][0].text == "Let me check that order."
 
 
-def test_end_turn_without_text_returns_empty_string(orders):
+def test_raises_when_end_turn_has_no_text(orders):
     client = FakeClient([FakeMessage(content=[], stop_reason="end_turn")])
 
-    answer = run_agent("Has order HL-10421 shipped?", client, orders)
+    with pytest.raises(AgentLoopError, match="no text"):
+        run_agent("Has order HL-10421 shipped?", client, orders)
 
-    assert answer == ""
+    assert len(client.calls) == 1
+
+
+def test_raises_when_end_turn_text_is_only_whitespace(orders):
+    client = FakeClient([text_response("  \n ")])
+
+    with pytest.raises(AgentLoopError, match="no text"):
+        run_agent("Has order HL-10421 shipped?", client, orders)
 
 
 def test_unknown_tool_without_order_id(orders):

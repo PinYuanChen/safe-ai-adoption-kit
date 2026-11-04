@@ -41,7 +41,10 @@ def run_agent(question, client, orders):
         )
         if response.stop_reason == "end_turn":
             texts = [block.text for block in response.content if block.type == "text"]
-            return "\n".join(texts)
+            answer = "\n".join(texts)
+            if not answer.strip():
+                raise AgentLoopError(f"end_turn with no text on turn {turn + 1}")
+            return answer
         elif response.stop_reason == "tool_use":
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []
