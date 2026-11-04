@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0013 工具當掉時</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0013</span><span class="pill">第 1 課</span><span class="pill">錯誤與邊界</span><span class="pill ok">已理解</span><span class="pill">2026-11-04</span></div>
+<h1>工具當掉時：細節留給自己，模型只拿通用訊息</h1>
+
+<div class="tldr"><strong>一句話：</strong>同一個 exception 分兩路走：完整細節印給開發者看，模型只拿一段固定的訊息。</div>
+
+<h2>背景</h2>
+<p>第一版的 <code>except</code> 直接把 <code>str(e)</code> 放進 <code>tool_result</code>。agent 確實不會當掉了，測試也全綠，看起來很完美。直到我們模擬了一下模型實際會讀到什麼。</p>
+
+<h2>觀念</h2>
+<h3><code>try</code> / <code>except</code></h3>
+<pre><code>try:
+    result = lookup_order(order_id, orders)
+    ...
+except Exception as e:      # 出錯時跑這裡，e 是那個 exception
+    ...</code></pre>
+<p><code>try</code> 只包住可能出錯的呼叫，參數驗證留在外面。範圍越小，越不會接住不該接的錯。</p>
+
+<h3>一個 exception，兩個去處</h3>
+<figure>
+<svg viewBox="0 0 680 216" role="img" aria-label="exception 的完整細節印到 stderr 給開發者，模型只收到固定的通用訊息">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="warn" x="200" y="12" width="280" height="44" rx="8"/><text class="th" x="340" y="39" text-anchor="middle">lookup_order 丟出 exception</text>
+<path class="arr" d="M280 56 L170 92" marker-end="url(#a)"/>
+<path class="arr" d="M400 56 L510 92" marker-end="url(#a)"/>
+<rect class="acc" x="20" y="94" width="300" height="110" rx="10"/>
+<text class="th" x="170" y="120" text-anchor="middle">stderr（給開發者）</text>
+<text class="s" x="38" y="146">• 完整細節：錯誤類型、路徑、帳號</text>
+<text class="s" x="38" y="168">• 模型讀不到</text>
+<text class="s" x="38" y="190">• 之後換成 telemetry（Component 4）</text>
+<rect class="ok" x="360" y="94" width="300" height="110" rx="10"/>
+<text class="th" x="510" y="120" text-anchor="middle">tool_result（給模型）</text>
+<text class="s" x="378" y="146">• is_error: True 加固定的通用訊息</text>
+<text class="s" x="378" y="168">• 沒有任何內部細節</text>
+<text class="s" x="378" y="190">• 告訴它該怎麼跟使用者說</text>
+</svg>
+<figcaption>通用訊息也要有用：說明是內部錯誤，模型才不會以為是自己的參數錯了</figcaption>
+</figure>
+
+<h3>為什麼是 <code>except Exception</code>，而不是 <code>except KeyError</code></h3>
+<p>在 tool 的邊界，我無法預知會出什麼錯，所以全部接住，agent 才不會當掉。代價是：<code>lookup_order</code> 本身有 bug 時，這裡會把它包成普通的 tool 錯誤，看起來還是「正常」運作。所以 <code>test_tools.py</code> 那些<b>直接測 <code>lookup_order</code></b> 的測試很重要：它們不經過這個 <code>try</code>，bug 會直接讓測試失敗。</p>
+
+<h3>stdout 和 stderr</h3>
+<pre><code>print(f"lookup_order failed: {type(e).__name__}: {e}", file=sys.stderr)</code></pre>
+<p>最終回答會印到 stdout。錯誤細節走 stderr，兩者才不會混在一起。</p>
+
+<h3>第一個安全測試</h3>
+<pre><code>class BrokenStore:
+    def __iter__(self):
+        raise RuntimeError("SECRET-INTERNAL-DETAIL")
+
+result = run_tool(block, BrokenStore())
+assert "SECRET-INTERNAL-DETAIL" not in result["content"]</code></pre>
+<p><code>for order in orders</code> 會呼叫物件的 <code>__iter__</code>，所以它一被走訪就爆炸，用來模擬「資料來源壞掉」。訊息用一個明顯的標記字串，測試就能檢查它有沒有跑進 <code>content</code>。這個測試不是在測功能做對了沒，而是在測<b>不該發生的事有沒有發生</b>，算是 Component 3 紅隊測試的雛形。</p>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>str(e) 把內部細節送給了模型</b><br>模擬兩種錯誤後，模型實際讀到的是：
+<pre><code>Error occurred while looking up order: 'order_id'
+Error occurred while looking up order: could not open /srv/harbor/orders.db as user svc_orders: permission denied</code></pre>
+第二行的路徑和帳號（模擬的）可能被模型轉述給使用者，也可能被攻擊者故意觸發來套資訊。第一行則會誤導模型：它會以為是自己傳的 <code>order_id</code> 有問題，白白重試一輪。</div>
+<div class="callout"><b>細節只給了模型，我自己反而看不到</b><br>當時 exception 的資訊只進了 <code>tool_result</code>，沒有任何地方留底。真的出事時，我只會聽到「系統暫時無法使用」。所以才加了印到 stderr 那一行。</div>
+<div class="callout"><b>BrokenStore 跑進了正式 code</b><br>測試用的 <code>BrokenStore</code> 同時出現在 <code>agent_loop.py</code>。測試用的是測試檔自己那份，所以全綠，完全沒發現。測試工具不該混進正式程式，以後讀 code 的人會以為它有用途。刪掉了。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0004-errors.html">0004 raise 還是回傳錯誤</a></li><li><a href="0010-test-map.html">0010 這些情況各有哪個測試在顧</a></li><li><a href="0012-trust-boundary.html">0012 信任邊界</a></li></ul>
+
+<nav class="pager"><a href="0012-trust-boundary.html">← 0012 信任邊界</a><a href="0014-first-real-run.html">0014 第一次接上真的模型 →</a></nav>
+</main>
+</body>
+</html>

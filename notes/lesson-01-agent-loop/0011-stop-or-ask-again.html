@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0011 該停還是再問一次</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0011</span><span class="pill">第 1 課</span><span class="pill">錯誤與邊界</span><span class="pill ok">已理解</span><span class="pill">2026-11-04</span></div>
+<h1>該停下來，還是該再問模型一次？</h1>
+
+<div class="tldr"><strong>一句話：</strong>手上有模型不知道的新資訊，再問一次才有意義。沒有新資訊，再問只是花錢聽同一句話。</div>
+
+<h2>背景</h2>
+<p>寫「不存在的 tool」測試時卡住了：為什麼 <code>client.calls</code> 是 2 次？我一開始以為這兩次是「<code>create</code> 一次，加上 assistant 去查訂單一次」。接著又想不通：那 <code>max_tokens</code> 和 <code>refusal</code> 的測試為什麼只有 1 次？</p>
+
+<h2>觀念</h2>
+<h3><code>client.calls</code> 只數「問模型」的次數</h3>
+<p>執行 tool 是我自己的 Python 函式，跟模型無關，不會被記進 <code>client.calls</code>。兩次都是 <code>create</code>，第二次是為了讓模型讀到結果。</p>
+<figure>
+<svg viewBox="0 0 680 324" role="img" aria-label="refusal 沒有新資訊所以呼叫一次就 raise；呼叫不存在的 tool 時產生錯誤結果，再呼叫第二次讓模型回答">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="warn" x="20" y="10" width="300" height="304" rx="12"/>
+<text class="th" x="170" y="36" text-anchor="middle">refusal：沒有新資訊，1 次</text>
+<rect class="box" x="36" y="52" width="268" height="36" rx="8"/><text class="t" x="170" y="75" text-anchor="middle">create() 第 1 次 → calls[0]</text>
+<path class="arr" d="M170 88 L170 104" marker-end="url(#a)"/>
+<rect class="box" x="36" y="104" width="268" height="36" rx="8"/><text class="t" x="170" y="127" text-anchor="middle">模型：stop_reason = refusal</text>
+<path class="arr" d="M170 140 L170 156" marker-end="url(#a)"/>
+<rect class="box" x="36" y="156" width="268" height="36" rx="8"/><text class="t" x="170" y="179" text-anchor="middle">沒有東西可以加進 messages</text>
+<path class="arr" d="M170 192 L170 208" marker-end="url(#a)"/>
+<rect class="box" x="36" y="208" width="268" height="36" rx="8"/><text class="t" x="170" y="231" text-anchor="middle">raise AgentLoopError，收工</text>
+<text class="s" x="170" y="280" text-anchor="middle">再問一次，送出的 messages 一模一樣</text>
+<rect class="ok" x="360" y="10" width="300" height="304" rx="12"/>
+<text class="th" x="510" y="36" text-anchor="middle">cancel_order：有新資訊，2 次</text>
+<rect class="box" x="376" y="52" width="268" height="36" rx="8"/><text class="t" x="510" y="75" text-anchor="middle">create() 第 1 次 → calls[0]</text>
+<path class="arr" d="M510 88 L510 104" marker-end="url(#a)"/>
+<rect class="box" x="376" y="104" width="268" height="36" rx="8"/><text class="t" x="510" y="127" text-anchor="middle">模型：我要叫 cancel_order</text>
+<path class="arr" d="M510 140 L510 156" marker-end="url(#a)"/>
+<rect class="acc" x="376" y="156" width="268" height="36" rx="8"/><text class="t" x="510" y="179" text-anchor="middle">run_tool：產生錯誤結果（不算次數）</text>
+<path class="arr" d="M510 192 L510 208" marker-end="url(#a)"/>
+<rect class="box" x="376" y="208" width="268" height="36" rx="8"/><text class="t" x="510" y="231" text-anchor="middle">create() 第 2 次 → calls[1]</text>
+<path class="arr" d="M510 244 L510 260" marker-end="url(#a)"/>
+<rect class="box" x="376" y="260" width="268" height="36" rx="8"/><text class="t" x="510" y="283" text-anchor="middle">模型：抱歉，我沒辦法取消訂單</text>
+</svg>
+<figcaption>差別只有一件事：messages 有沒有多出模型不知道的東西</figcaption>
+</figure>
+
+<table>
+<tr><th>情況</th><th>有新資訊嗎</th><th>再問會改變結果嗎</th><th>做法</th></tr>
+<tr><td><code>max_tokens</code>、<code>refusal</code></td><td>沒有</td><td>不會</td><td>raise，停下來</td></tr>
+<tr><td>不存在的 tool、參數錯誤</td><td>有：錯誤結果</td><td>會</td><td>回報給模型，繼續</td></tr>
+</table>
+
+<h3>白名單 vs 黑名單</h3>
+<pre><code>if response.stop_reason == "end_turn":
+    ...                     # 允許的第 1 種
+elif response.stop_reason == "tool_use":
+    ...                     # 允許的第 2 種
+else:
+    raise AgentLoopError(f"stop_reason: {response.stop_reason} ...")   # 其他全擋</code></pre>
+<table>
+<tr><th>寫法</th><th>邏輯</th><th>遇到沒想到的值</th></tr>
+<tr><td>黑名單</td><td>列出<b>不允許</b>的值</td><td>放行，繼續跑</td></tr>
+<tr><td>白名單</td><td>列出<b>允許</b>的值，其他全擋</td><td>擋下來</td></tr>
+</table>
+<p>我不可能預先想到所有壞情況，所以不確定的時候就停下來。這叫 <b>fail closed</b>，這個 repo 的 Bash guard 用的也是同一個原則。</p>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>只擋了 max_tokens，其他照樣 runaway</b><br>第一版只寫了 <code>if response.stop_reason == "max_tokens"</code>，測試全綠。換成測試沒涵蓋的值，同樣的請求被送了 5 次：
+<pre><code>refusal       -&gt; unexpected stop_reason: exceed max turns on turn 5 | create() calls: 5
+pause_turn    -&gt; unexpected stop_reason: exceed max turns on turn 5 | create() calls: 5
+stop_sequence -&gt; unexpected stop_reason: exceed max turns on turn 5 | create() calls: 5</code></pre>
+模型第一次就拒絕了，我卻看到「超過回合上限」。加上 <code>else</code> 之後，每一種都在第 1 次就停。</div>
+<div class="callout"><b>IndexError 不是 calls[1] 的錯</b><br><code>client.calls[1]["messages"][2]["content"][0]</code> 有四個中括號，錯誤訊息不會說是哪一個。我以為是 <code>calls[1]</code>，其實上一行 <code>len(client.calls) == 2</code> 已經通過了，真正出錯的是最後的 <code>[0]</code>：<code>content</code> 是空的 list，因為迴圈把 <code>cancel_order</code> 默默跳過了。</div>
+<div class="callout ok"><b>怎麼抓是哪一個中括號</b><br>在那行前面暫時加 <code>print(client.calls[1]["messages"][2])</code>，跑 <code>uv run pytest -s</code>，<code>-s</code> 會讓 print 顯示出來。確認完記得刪掉。</div>
+<div class="callout ok"><b>錯誤訊息要說真正的原因</b><br>我原本打算讓其他 <code>stop_reason</code> 也回報「超過 max turns」。但 <code>max_tokens</code> 是回答被截斷，要調的是 <code>max_tokens</code>，跟回合數無關。訊息說錯原因，就會去修錯地方。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0004-errors.html">0004 raise 還是回傳錯誤</a></li><li><a href="0007-messages-grow.html">0007 那串四個中括號的拆解</a></li><li><a href="0009-fake-client.html">0009 client.calls 是誰在記錄</a></li></ul>
+
+<nav class="pager"><a href="0010-test-map.html">← 0010 測試地圖</a><a href="0012-trust-boundary.html">0012 信任邊界 →</a></nav>
+</main>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0003 函式與迴圈</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0003</span><span class="pill">第 1 課</span><span class="pill">Python 語法</span><span class="pill ok">已理解</span><span class="pill">2026-11-02</span></div>
+<h1>函式、迴圈、一行寫完的 list</h1>
+
+<div class="tldr"><strong>一句話：</strong>Python 用<b>縮排</b>代替大括號。縮排就是文法，不是美觀問題，空格數錯了程式就會錯。</div>
+
+<h2>背景</h2>
+<p>寫 <code>lookup_order</code> 和 <code>run_agent</code> 需要的語法其實不多：函式、for、if，再加上一個讓人第一眼看不懂的 list comprehension。</p>
+
+<h2>觀念</h2>
+<h3>縮排 = 誰歸誰管</h3>
+<figure>
+<svg viewBox="0 0 680 200" role="img" aria-label="縮排層級表示程式碼屬於哪個區塊">
+<rect class="acc" x="20" y="16" width="640" height="168" rx="10"/>
+<text class="mono" x="36" y="42">def run_tool(block, orders):</text>
+<rect class="box" x="56" y="56" width="588" height="116" rx="8"/>
+<text class="mono" x="72" y="80">if block.name == "lookup_order":</text>
+<rect class="ok" x="96" y="90" width="532" height="30" rx="6"/>
+<text class="mono" x="112" y="110">order_id = block.input.get("order_id")</text>
+<text class="mono" x="72" y="142">else:</text>
+<rect class="warn" x="96" y="148" width="532" height="20" rx="4"/>
+<text class="s" x="112" y="162">return 錯誤的 tool_result</text>
+</svg>
+<figcaption>每往右縮 4 格，就是「我屬於上面那行」</figcaption>
+</figure>
+
+<h3>函式</h3>
+<pre><code>def lookup_order(order_id: str, orders: list[dict]) -&gt; dict:
+    for order in orders:
+        if order["order_id"] == order_id:
+            return order                 # 找到就立刻收工，後面不跑
+    return {"error": "Order not found", "order_id": order_id}</code></pre>
+<ul>
+  <li><code>order_id: str</code> 是<b>型別標註</b>。它只是給人看的備忘錄，Python 執行時完全不會檢查。傳數字進去它也照收不誤。</li>
+  <li><code>-&gt; dict</code>：這個函式承諾回傳 dict。</li>
+  <li><code>return</code> = 下班打卡，函式立刻結束。</li>
+</ul>
+
+<h3>for、if、elif</h3>
+<pre><code>for turn in range(MAX_TURNS):     # turn 依序是 0, 1, 2, 3, 4
+    if response.stop_reason == "end_turn":   # 比較用兩個等號
+        return ...
+    elif response.stop_reason == "tool_use": # else if 在 Python 叫 elif
+        ...
+    else:
+        raise ...
+raise AgentLoopError("max turns")   # 迴圈跑完都沒 return，才走到這裡</code></pre>
+<p>最後一行是 <code>run_agent</code> 的保險絲：迴圈跑滿 5 輪還沒拿到答案，就大聲報錯，不讓它無限跑下去燒錢。</p>
+
+<h3>List comprehension：把 4 行壓成 1 行</h3>
+<figure>
+<svg viewBox="0 0 680 210" role="img" aria-label="list comprehension 和一般 for 迴圈的對應">
+<rect class="acc" x="20" y="20" width="640" height="44" rx="8"/>
+<text class="mono" x="36" y="47">[block.text  for block in response.content  if block.type == "text"]</text>
+<rect class="box" x="20" y="90" width="200" height="104" rx="8"/><text class="th" x="120" y="118" text-anchor="middle">① 要什麼</text><text class="mono" x="120" y="150" text-anchor="middle">block.text</text>
+<rect class="box" x="240" y="90" width="200" height="104" rx="8"/><text class="th" x="340" y="118" text-anchor="middle">② 從哪拿</text><text class="mono" x="340" y="150" text-anchor="middle">for block in …</text>
+<rect class="box" x="460" y="90" width="200" height="104" rx="8"/><text class="th" x="560" y="118" text-anchor="middle">③ 篩選條件</text><text class="mono" x="560" y="150" text-anchor="middle">if type == "text"</text>
+</svg>
+<figcaption>讀法：「從 content 裡每個 block，挑出 text 型的，取它的 .text」</figcaption>
+</figure>
+<p>等同於這段比較囉嗦的寫法：</p>
+<pre><code>texts = []
+for block in response.content:
+    if block.type == "text":
+        texts.append(block.text)</code></pre>
+
+<h3>字串三招</h3>
+<pre><code>f"turn {turn + 1}"        # f-string：大括號裡放變數或算式
+"\n".join(texts)          # 用換行把一串字串黏起來
+"Let me check" in answer  # 有沒有包含這段字？回傳 True / False</code></pre>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>IndentationError</b><br>空格和 Tab 混用，或少縮一格。編輯器設成「Tab 自動轉 4 個空格」就沒事了。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0006-agent-loop-flow.html">0006 Agent loop 的完整流程</a></li></ul>
+
+<nav class="pager"><a href="0002-dict-list-dot-bracket.html">← 0002 點和中括號</a><a href="0004-errors.html">0004 出錯的時候 →</a></nav>
+</main>
+</body>
+</html>

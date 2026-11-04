@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0012 信任邊界</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0012</span><span class="pill">第 1 課</span><span class="pill">錯誤與邊界</span><span class="pill ok">已理解</span><span class="pill">2026-11-04</span></div>
+<h1>信任邊界：模型給的東西，進門要查</h1>
+
+<div class="tldr"><strong>一句話：</strong><code>input_schema</code> 裡的每個欄位，都要假設是不可信的人填的。第一個碰到它的地方就要驗，驗不過就退件，不要幫它修。</div>
+
+<h2>背景</h2>
+<p>三個問題其實是同一件事：</p>
+<ul>
+  <li><code>orders</code> 為什麼不放進 <code>input_schema</code>？我的答案是「會多花 token」，只對了一小半。</li>
+  <li><code>order_id</code> 的判斷要放在哪裡？</li>
+  <li>模型傳數字的話，我是不是該強制轉成字串？</li>
+</ul>
+
+<h2>觀念</h2>
+<h3>邊界畫在哪裡</h3>
+<figure>
+<svg viewBox="0 0 680 140" role="img" aria-label="模型填的 block.input 進入 run_tool 時要驗證，通過後才交給 lookup_order；orders 由程式自己提供">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<path class="dash" d="M272 22 L272 104"/>
+<text class="s" x="272" y="16" text-anchor="middle">信任邊界</text>
+<rect class="warn" x="12" y="36" width="112" height="56" rx="8"/><text class="th" x="68" y="60" text-anchor="middle">模型</text><text class="s" x="68" y="80" text-anchor="middle">不可信</text>
+<path class="arr" d="M124 64 L148 64" marker-end="url(#a)"/>
+<rect class="warn" x="148" y="36" width="112" height="56" rx="8"/><text class="mono" x="204" y="60" text-anchor="middle">block.input</text><text class="s" x="204" y="80" text-anchor="middle">模型填的</text>
+<path class="arr" d="M260 64 L284 64" marker-end="url(#a)"/>
+<rect class="acc" x="284" y="36" width="112" height="56" rx="8"/><text class="mono" x="340" y="60" text-anchor="middle">run_tool</text><text class="s" x="340" y="80" text-anchor="middle">在這裡驗</text>
+<path class="arr" d="M396 64 L420 64" marker-end="url(#a)"/>
+<rect class="ok" x="420" y="36" width="112" height="56" rx="8"/><text class="mono" x="476" y="60" text-anchor="middle">lookup_order</text><text class="s" x="476" y="80" text-anchor="middle">收到的已驗過</text>
+<path class="arr" d="M556 64 L532 64" marker-end="url(#a)"/>
+<rect class="ok" x="556" y="36" width="112" height="56" rx="8"/><text class="mono" x="612" y="60" text-anchor="middle">orders</text><text class="s" x="612" y="80" text-anchor="middle">我的程式給的</text>
+<text class="s" x="340" y="126" text-anchor="middle">模型的值過線前要查完；orders 從右邊進來，模型碰不到</text>
+</svg>
+<figcaption>run_tool 是程式裡第一個碰到模型輸入的地方，所以驗證放這裡</figcaption>
+</figure>
+
+<h3><code>input_schema</code> 是模型要填的表單</h3>
+<p>它不是「要傳給模型的資料」，而是「模型呼叫工具時要自己填的欄位」。把 <code>orders</code> 放進去，等於要模型自己生出訂單資料：</p>
+<ol>
+  <li><b>模型根本沒有這些資料</b>，只能憑空編造，函式就會在假資料裡「查到」假結果。</li>
+  <li><b>模型填的值可以被操控</b>，使用者或注入的文字都可能影響它。資料來源交給模型，等於讓攻擊者決定 tool 回傳什麼。</li>
+</ol>
+<p>token 主要花在 <code>tool_result</code>：查詢結果會整包送回去給模型讀。那是回傳值要考慮的事，跟 <code>input_schema</code> 是兩回事。</p>
+
+<h3>先認 tool，再驗參數</h3>
+<pre><code>if 名稱是 lookup_order:
+    檢查 order_id 在不在
+    檢查 order_id 是不是字串
+    執行 lookup_order
+else:
+    不存在的 tool</code></pre>
+<p><code>order_id</code> 是 <code>lookup_order</code> 專屬的參數。先確認它是什麼，再去讀它才有的東西。</p>
+
+<h3>拒絕，不要幫它修</h3>
+<pre><code>str(12345)          # "12345"，沒有 HL-，照樣查不到
+str(None)           # "None"
+str(["HL-10421"])   # "['HL-10421']"
+str({"x": 1})       # "{'x': 1}"</code></pre>
+<p>什麼都能轉成字串，所以什麼都會被放行。</p>
+<table>
+<tr><th>做法</th><th>模型得到的訊息</th><th>結果</th></tr>
+<tr><td>強制轉字串</td><td>「查不到訂單」</td><td>錯誤的結論：訂單不存在</td></tr>
+<tr><td>拒絕並回報</td><td>「order_id 要是字串，收到 int」</td><td>模型修正後重查</td></tr>
+</table>
+
+<h3><code>tool_result</code> 也是外部輸入</h3>
+<p><code>role</code> 是從模型的角度分的：<code>assistant</code> 是它自己說的話，<code>user</code> 是所有從外面送進來的東西。所以 tool 結果和使用者打的字，對模型來說是同一個等級。如果資料裡藏了「忽略之前的指示」，模型讀到時就像使用者親口說的。這是 Component 3 要測的 prompt injection。</p>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>驗證順序反了，訊息說錯 tool</b><br><code>order_id</code> 的檢查放在名稱判斷之前，結果每個 tool 都被拿來檢查 <code>order_id</code>：
+<pre><code>cancel_order {}  -&gt; lookup_order is missing the required 'order_id' argument.
+search_orders {'customer': 'Copperleaf Home Goods'}  -&gt; lookup_order is missing ...</code></pre>
+模型叫的明明不是 <code>lookup_order</code>。當時 17 個測試全綠，因為唯一的 <code>cancel_order</code> 測試有帶 <code>order_id</code>，剛好避開了。</div>
+<div class="callout"><b>refactor 順手拿掉了 block.type 檢查</b><br>抽出 <code>run_tool</code> 時，迴圈變成把每個區塊都丟進去。模型先說一句話再叫 tool 時就當掉了：<code>AttributeError: 'TextBlock' object has no attribute 'name'</code>。當時 15 個測試全綠，因為沒有任何測試的回應裡有文字區塊。測試只保護它涵蓋到的行為，所以補了回歸測試。</div>
+<div class="callout ok"><b>已知問題，先記著：IDOR</b><br>自動安全審查標記了 <code>lookup_order</code>：拿到任何編號都回傳整筆訂單，不檢查問的人有沒有權限。編號是連號的，猜起來很容易。使用者身分要從伺服器端傳進來，不能放進 schema。目前 agent 還沒有「使用者是誰」的概念，留給 Component 3、6。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0004-errors.html">0004 isinstance 和 .get()</a></li><li><a href="0008-anatomy.html">0008 tool 定義的長相</a></li><li><a href="0013-tool-crash.html">0013 tool 當掉時給模型看多少</a></li></ul>
+
+<nav class="pager"><a href="0011-stop-or-ask-again.html">← 0011 該停還是再問一次</a><a href="0013-tool-crash.html">0013 工具當掉時 →</a></nav>
+</main>
+</body>
+</html>

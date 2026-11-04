@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0010 測試地圖</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0010</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill">持續補充</span><span class="pill">2026-11-04</span></div>
+<h1>測試地圖與待辦</h1>
+
+<div class="tldr"><strong>一句話：</strong>每個測試都是一個保全，各自顧一扇門。這張地圖記錄哪扇門有人顧、哪扇還空著。</div>
+
+<h2>背景</h2>
+<p>測試越寫越多，容易忘記某個測試當初是在防什麼。改程式時看到它紅了，要知道是哪個承諾被打破。</p>
+
+<h2>觀念</h2>
+<h3>元件地圖：誰寫的、住哪裡</h3>
+<figure>
+<svg viewBox="0 0 680 270" role="img" aria-label="src 下的 tools 和 agent_loop 由我寫，tests 下的 fake_client、conftest 和 orders.json 由 Claude 寫">
+<rect class="ok" x="20" y="16" width="310" height="240" rx="12"/>
+<text class="th" x="36" y="42">src/safe_ai_kit/（我寫的）</text>
+<rect class="box" x="36" y="56" width="278" height="84" rx="8"/><text class="th" x="52" y="80">tools.py</text><text class="mono" x="52" y="104">LOOKUP_ORDER_TOOL</text><text class="mono" x="52" y="126">lookup_order()</text>
+<rect class="box" x="36" y="152" width="278" height="90" rx="8"/><text class="th" x="52" y="176">agent_loop.py</text><text class="mono" x="52" y="200">run_agent()  run_tool()</text><text class="mono" x="52" y="224">AgentLoopError  MAX_TURNS</text>
+<rect class="acc" x="350" y="16" width="310" height="240" rx="12"/>
+<text class="th" x="366" y="42">tests/（Claude 準備的道具）</text>
+<rect class="box" x="366" y="56" width="278" height="56" rx="8"/><text class="th" x="382" y="80">fake_client.py</text><text class="s" x="382" y="100">假演員和台詞範本</text>
+<rect class="box" x="366" y="120" width="278" height="56" rx="8"/><text class="th" x="382" y="144">conftest.py</text><text class="s" x="382" y="164">orders 便當、清掉 API key</text>
+<rect class="box" x="366" y="184" width="278" height="58" rx="8"/><text class="th" x="382" y="208">fixtures/orders.json</text><text class="s" x="382" y="228">9 筆虛構訂單 + 查不到的 HL-10429</text>
+</svg>
+</figure>
+
+<h3>每個保全顧哪扇門</h3>
+<table>
+<tr><th>測試</th><th>保護的承諾</th><th>它紅了代表</th></tr>
+<tr><td>直接回答</td><td>不需要工具時，一輪就收工</td><td>loop 多跑了，或取文字取錯</td></tr>
+<tr><td>跑工具再回答</td><td>tool_use → run_tool → tool_result 接對 id → 最終答案</td><td>messages 組錯，或 id 對不上</td></tr>
+<tr><td>一直呼叫工具</td><td>跑滿 MAX_TURNS 會停</td><td>保險絲壞了，可能無限燒錢</td></tr>
+<tr><td><code>max_tokens</code> / <code>refusal</code></td><td>沒拿到完整答案就明確失敗</td><td>在假裝成功</td></tr>
+<tr><td>未知的 tool</td><td>回 is_error 給模型，不當掉</td><td>模型亂點菜時 agent 會翻桌</td></tr>
+<tr><td>缺參數 / 型別錯誤</td><td>回 is_error，不 KeyError</td><td>同上</td></tr>
+<tr><td>未知的 tool，沒帶 order_id</td><td>訊息說的是模型叫的 tool</td><td>又變成先驗參數、再認 tool</td></tr>
+<tr><td>工具當掉</td><td>回 is_error，agent 不當掉</td><td><code>try</code> / <code>except</code> 不見了</td></tr>
+<tr><td>工具當掉不外洩</td><td>exception 的內容不進 tool_result</td><td>內部細節又送給模型了</td></tr>
+<tr><td>多個文字區塊</td><td>用 <code>\n</code> 依序接起來</td><td>只取了第一段</td></tr>
+<tr><td>工具前的開場白</td><td>不混進答案，但保留在對話紀錄</td><td>使用者看到「Let me check」黏在答案上</td></tr>
+<tr><td><code>end_turn</code> 沒有文字 / 只有空白</td><td>raise，不回傳一片空白</td><td>使用者又會收到空白回答</td></tr>
+<tr><td>CLI（3 個）</td><td>答案在 stdout、trace 在 stderr、失敗時 exit 1</td><td>輸出混在一起，或失敗還回報成功</td></tr>
+</table>
+
+<h2>已決定</h2>
+<div class="callout ok"><b>end_turn 卻一個字都沒說，該怎麼辦？</b><br>比照 <code>max_tokens</code>：拿不到答案就 raise，不要假裝成功。上表和測試都更新了，經過見 0014。</div>
+
+<h2>之後要回頭想的事</h2>
+<table>
+<tr><th>Component</th><th>問題</th></tr>
+<tr><td>3 紅隊測試</td><td>tool_result 是<b>不可信內容</b>。如果訂單備註裡藏了「忽略之前的指示」，模型會照做嗎？</td></tr>
+<tr><td>4 Telemetry</td><td><code>response.usage</code> 的 token 數要記下來，才算得出每個問題花多少錢</td></tr>
+<tr><td>4 Telemetry</td><td>tool 當掉的細節目前印到 stderr，之後改寫進 trace</td></tr>
+<tr><td>6 權限控管</td><td>資料最小化：模型真的需要看到客戶名稱和單價嗎？只回傳回答問題需要的欄位</td></tr>
+<tr><td>6 權限控管</td><td>IDOR：<code>lookup_order</code> 不檢查問的人有沒有權限，見 0012</td></tr>
+</table>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0005-pytest.html">0005 pytest 生存指南</a></li><li><a href="0009-fake-client.html">0009 FakeClient</a></li><li><a href="0013-tool-crash.html">0013 第一個安全測試</a></li><li><a href="0014-first-real-run.html">0014 真的模型才測得出來的事</a></li></ul>
+
+<nav class="pager"><a href="0009-fake-client.html">← 0009 FakeClient</a><a href="0011-stop-or-ask-again.html">0011 該停還是再問一次 →</a></nav>
+</main>
+</body>
+</html>

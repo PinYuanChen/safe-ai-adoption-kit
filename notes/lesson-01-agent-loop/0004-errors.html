@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0004 出錯的時候</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0004</span><span class="pill">第 1 課</span><span class="pill">Python 語法</span><span class="pill ok">已理解</span><span class="pill">2026-11-02</span></div>
+<h1>出錯的時候：raise 還是回傳錯誤？</h1>
+
+<div class="tldr"><strong>一句話：</strong>錯誤要交給<b>模型</b>讀的，就回傳錯誤 dict；錯誤要讓<b>呼叫你的人</b>知道的，就 raise。</div>
+
+<h2>背景</h2>
+<p>查不到訂單、模型傳錯參數、模型講到一半被截斷，這些都是「出錯」。但它們該由不同的人來處理。</p>
+
+<h2>觀念</h2>
+<h3>誰該收到這個壞消息？</h3>
+<figure>
+<svg viewBox="0 0 680 270" role="img" aria-label="可預期的錯誤回傳給模型，無法完成的錯誤 raise 給呼叫者">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="box" x="240" y="16" width="200" height="50" rx="8"/><text class="th" x="340" y="46" text-anchor="middle">發生了問題</text>
+<path class="arr" d="M300 66 L170 110" marker-end="url(#a)"/>
+<path class="arr" d="M380 66 L510 110" marker-end="url(#a)"/>
+<rect class="ok" x="20" y="112" width="300" height="140" rx="10"/>
+<text class="th" x="170" y="138" text-anchor="middle">模型還能處理 → 回傳 is_error</text>
+<text class="s" x="40" y="166">• 查不到 HL-10429</text>
+<text class="s" x="40" y="188">• tool 缺參數、型別錯</text>
+<text class="s" x="40" y="210">• 呼叫了不存在的 tool</text>
+<text class="s" x="40" y="236">→ 模型讀到後會照實說，或修正重試</text>
+<rect class="warn" x="360" y="112" width="300" height="140" rx="10"/>
+<text class="th" x="510" y="138" text-anchor="middle">沒辦法完成 → raise</text>
+<text class="s" x="380" y="166">• 跑滿 MAX_TURNS</text>
+<text class="s" x="380" y="188">• stop_reason 是 max_tokens</text>
+<text class="s" x="380" y="210">• stop_reason 是 refusal</text>
+<text class="s" x="380" y="236">→ 不能假裝成功，要讓呼叫者知道</text>
+</svg>
+<figcaption>判斷標準：誰有能力處理這個問題？</figcaption>
+</figure>
+
+<p>為什麼查不到訂單不 raise？因為「查不到」是正常、可以預期的答案，就像店員說「這個型號沒貨」。你不會因此把店燒了。把它好好包成 dict 交給模型，模型就能跟使用者說「查不到這筆訂單」，而不是自己編一個。</p>
+
+<h3>None：「這裡什麼都沒有」</h3>
+<pre><code>order_id = block.input.get("order_id")   # 沒這個 key → None
+if order_id is None:                     # 跟 None 比較用 is，不用 ==
+    ...</code></pre>
+<p>為什麼不回傳 None 表示查不到？因為模型看到一片空白，分不出是「沒這筆訂單」、「系統壞了」還是「還沒查」。分不出來的時候，模型常會自由發揮。</p>
+
+<h3>isinstance：驗明正身</h3>
+<pre><code>isinstance(order_id, str)    # 是字串嗎？ True / False
+type(order_id).__name__      # 它到底是什麼？ 例如 "int"</code></pre>
+<p>還記得型別標註只是備忘錄嗎（見 0003）？模型可能傳 <code>10421</code> 而不是 <code>"HL-10421"</code>，Python 不會幫你擋，要自己檢查。</p>
+
+<h3>自訂錯誤</h3>
+<pre><code>class AgentLoopError(Exception):
+    """Raised when the agent loop cannot finish normally."""
+
+raise AgentLoopError("stop_reason: max_tokens on turn 1")</code></pre>
+<p>自己取一個錯誤名字的好處：呼叫的人可以只接這一種錯誤，測試也能精準檢查（見 0005 的 <code>pytest.raises</code>）。</p>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>KeyError: 'order_id'</b><br><code>run_tool</code> 原本寫 <code>block.input["order_id"]</code>，模型一忘了傳參數，整個 agent 就翻桌。改用 <code>.get()</code> 加檢查，回傳 <code>is_error</code>。</div>
+<div class="callout ok"><b>錯誤訊息寫給誰看？</b><br>寫給模型看：要具體說出「缺了什麼、應該是什麼型別」，它下一輪才知道怎麼改。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0008-anatomy.html">0008 tool_result 的長相</a></li><li><a href="0010-test-map.html">0010 這些錯誤各有哪個測試在顧</a></li><li><a href="0013-tool-crash.html">0013 tool 當掉時給模型看多少</a></li></ul>
+
+<nav class="pager"><a href="0003-functions-loops.html">← 0003 函式與迴圈</a><a href="0005-pytest.html">0005 pytest 生存指南 →</a></nav>
+</main>
+</body>
+</html>

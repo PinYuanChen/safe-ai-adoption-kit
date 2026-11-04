@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0005 pytest 生存指南</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0005</span><span class="pill">第 1 課</span><span class="pill">Python 語法</span><span class="pill ok">已理解</span><span class="pill">2026-11-02</span></div>
+<h1>pytest 生存指南</h1>
+
+<div class="tldr"><strong>一句話：</strong>函式名字用 <code>test_</code> 開頭，裡面寫 <code>assert</code>，pytest 就會自動找到它、跑它、幫你計分。</div>
+
+<h2>背景</h2>
+<p>遇過兩個謎團：參數寫個 <code>orders</code>，資料就自己出現了？還有，為什麼明明有好幾個測試，一個錯誤就讓全部停擺？</p>
+
+<h2>觀念</h2>
+<h3>pytest 的一天</h3>
+<figure>
+<svg viewBox="0 0 680 190" role="img" aria-label="pytest 先收集測試，再準備 fixture，再執行並計分">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="warn" x="20" y="30" width="190" height="76" rx="8"/><text class="th" x="115" y="60" text-anchor="middle">① 收集</text><text class="s" x="115" y="84" text-anchor="middle">import 每個 test_*.py</text>
+<line class="arr" x1="212" y1="68" x2="242" y2="68" marker-end="url(#a)"/>
+<rect class="acc" x="245" y="30" width="190" height="76" rx="8"/><text class="th" x="340" y="60" text-anchor="middle">② 準備 fixture</text><text class="s" x="340" y="84" text-anchor="middle">看參數名，去 conftest 找</text>
+<line class="arr" x1="437" y1="68" x2="467" y2="68" marker-end="url(#a)"/>
+<rect class="ok" x="470" y="30" width="190" height="76" rx="8"/><text class="th" x="565" y="60" text-anchor="middle">③ 執行、計分</text><text class="s" x="565" y="84" text-anchor="middle">assert 不成立 = 失敗</text>
+<text class="s" x="115" y="140" text-anchor="middle">這步失敗 → 全部停擺</text>
+<text class="s" x="565" y="140" text-anchor="middle">這步失敗 → 只算一個 failed</text>
+<text class="s" x="340" y="170" text-anchor="middle">① 是門口的保全：有人連門都進不來，整場活動就先暫停</text>
+</svg>
+</figure>
+
+<h3>fixture：自動送到的便當</h3>
+<pre><code># tests/conftest.py
+@pytest.fixture
+def orders(orders_data):
+    return orders_data["orders"]
+
+# tests/test_tools.py
+def test_finds_a_shipped_order(orders):      # ← 參數名叫 orders
+    result = lookup_order("HL-10421", orders)
+    assert result["status"] == "shipped"</code></pre>
+<p>pytest 看到參數叫 <code>orders</code>，就去 <code>conftest.py</code> 找同名的 fixture，做好之後送過來。<b>名字對上就是唯一的規則。</b></p>
+<p>另外 conftest 裡有一個 <code>autouse=True</code> 的 fixture，每個測試都會自動套用：它清掉 API key 環境變數，避免真的 client 意外連上 API 燒錢。</p>
+
+<h3>測「應該要出錯」</h3>
+<pre><code>with pytest.raises(AgentLoopError, match="max turns"):
+    run_agent("...", client, orders)</code></pre>
+<p>意思是：<code>with</code> 區塊裡<b>一定要</b>丟出 <code>AgentLoopError</code>，而且訊息要包含 "max turns"。沒丟，或丟錯種類，測試就失敗。</p>
+
+<h3>常用選項</h3>
+<table>
+<tr><th>選項</th><th>作用</th><th>什麼時候用</th></tr>
+<tr><td><code>-v</code></td><td>列出每個測試的結果</td><td>想看清楚哪個過、哪個沒過</td></tr>
+<tr><td><code>-x</code></td><td>第一個失敗就停</td><td>一次只想專心修一個問題</td></tr>
+<tr><td><code>--maxfail=3</code></td><td>失敗 3 個就停</td><td>介於兩者之間</td></tr>
+<tr><td><code>--continue-on-collection-errors</code></td><td>有檔案 import 失敗，其他照跑</td><td>想先看其他測試的狀況</td></tr>
+</table>
+
+<h3>先紅後綠</h3>
+<figure>
+<svg viewBox="0 0 680 120" role="img" aria-label="先寫測試看它失敗，再改程式讓它通過">
+<defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="box" x="20" y="30" width="190" height="60" rx="8"/><text class="th" x="115" y="58" text-anchor="middle">寫測試</text><text class="s" x="115" y="78" text-anchor="middle">程式先不動</text>
+<line class="arr" x1="212" y1="60" x2="242" y2="60" marker-end="url(#a2)"/>
+<rect class="warn" x="245" y="30" width="190" height="60" rx="8"/><text class="th" x="340" y="58" text-anchor="middle">紅：看它失敗</text><text class="s" x="340" y="78" text-anchor="middle">證明測試有測到東西</text>
+<line class="arr" x1="437" y1="60" x2="467" y2="60" marker-end="url(#a2)"/>
+<rect class="ok" x="470" y="30" width="190" height="60" rx="8"/><text class="th" x="565" y="58" text-anchor="middle">綠：改程式</text><text class="s" x="565" y="78" text-anchor="middle">直到它通過</text>
+</svg>
+</figure>
+<p>為什麼要先看它失敗？因為一個「怎樣都會過」的測試比沒有測試更糟：它會讓你以為安全。</p>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>Interrupted: 1 error during collection</b><br><code>test_agent_loop.py</code> 寫了 <code>from fake_client import TOOL_USE_BLOCK_CLASS as ToolUseBlock</code>，但根本沒這個名字。保全把它擋在門口，整場暫停。改成 <code>ToolUseBlock</code> 就好。</div>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0009-fake-client.html">0009 FakeClient：測試裡的假演員</a></li><li><a href="0010-test-map.html">0010 測試地圖</a></li></ul>
+
+<nav class="pager"><a href="0004-errors.html">← 0004 出錯的時候</a><a href="0006-agent-loop-flow.html">0006 Agent loop 流程 →</a></nav>
+</main>
+</body>
+</html>
