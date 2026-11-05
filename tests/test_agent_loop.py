@@ -3,7 +3,7 @@ import json
 import pytest
 
 from fake_client import FakeClient, FakeMessage, TextBlock, text_response, tool_use_response, ToolUseBlock
-from safe_ai_kit.agent_loop import run_agent, AgentLoopError, MAX_TURNS, run_tool
+from safe_ai_kit.agent_loop import run_agent, AgentLoopError, MAX_TURNS, run_tool, TOKEN_BUDGET
 from safe_ai_kit.tools import LOOKUP_ORDER_TOOL
 
 
@@ -197,3 +197,41 @@ def test_tool_crash_does_not_leak_internal_details():
 
     assert result["is_error"] is True
     assert "SECRET-INTERNAL-DETAIL" not in result["content"]
+
+
+def test_parallel_tool_results_go_in_one_user_message(orders):
+    client = FakeClient([
+        FakeMessage(
+            content=[
+                ToolUseBlock(id="toolu_a", name="lookup_order", input={"order_id": "HL-10421"}),
+                ToolUseBlock(id="toolu_b", name="lookup_order", input={"order_id": "HL-10429"}),
+            ],
+            stop_reason="tool_use",
+        ),
+        text_response("HL-10421 shipped. HL-10429 was not found."),
+    ])
+
+    run_agent("Have orders HL-10421 and HL-10429 shipped?", client, orders)
+
+    second_messages = client.calls[1]["messages"]
+    assert [m["role"] for m in second_messages] == ["user", "assistant", "user"]
+    assert [r["tool_use_id"] for r in second_messages[2]["content"]] == ["toolu_a", "toolu_b"]
+
+
+def test_raises_when_token_budget_is_exceeded(orders):
+    client = FakeClient([
+        tool_use_response("lookup_order", {"order_id": "HL-10421"}, input_tokens=TOKEN_BUDGET // 2)
+        for _ in range(MAX_TURNS)
+    ])
+
+    with pytest.raises(AgentLoopError, match="token budget"):
+        run_agent("Has order HL-10421 shipped?", client, orders)
+
+    assert len(client.calls) == 2
+    assert len(client.calls) < MAX_TURNS
+
+
+def test_returns_answer_even_if_final_reply_goes_over_budget(orders):
+    client = FakeClient([text_response("Done.", input_tokens=TOKEN_BUDGET + 1)])
+
+    assert run_agent("Hi", client, orders) == "Done."

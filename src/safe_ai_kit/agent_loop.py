@@ -11,7 +11,7 @@ from safe_ai_kit.tools import LOOKUP_ORDER_TOOL, lookup_order
 
 MODEL = "claude-haiku-5-5"
 MAX_TURNS = 5
-
+TOKEN_BUDGET = 10000
 
 class AgentLoopError(Exception):
     """Raised when the agent loop cannot finish normally."""
@@ -33,6 +33,7 @@ def run_agent(question, client, orders):
     model in full.
     """
     messages = [{"role": "user", "content": question}]
+    used_tokens = 0
     for turn in range(MAX_TURNS):
         response = client.messages.create(
             model=MODEL,
@@ -40,12 +41,15 @@ def run_agent(question, client, orders):
             tools=[LOOKUP_ORDER_TOOL],
             messages=messages,
         )
+        used_tokens += response.usage.input_tokens + response.usage.output_tokens
         if response.stop_reason == "end_turn":
             texts = [block.text for block in response.content if block.type == "text"]
             answer = "\n".join(texts)
             if not answer.strip():
                 raise AgentLoopError(f"end_turn with no text on turn {turn + 1}")
             return answer
+        elif used_tokens > TOKEN_BUDGET:
+            raise AgentLoopError(f"token budget {TOKEN_BUDGET} exceeded on turn {turn + 1}")
         elif response.stop_reason == "tool_use":
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []
