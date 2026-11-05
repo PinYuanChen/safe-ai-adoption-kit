@@ -9,7 +9,7 @@
 <body>
 <main>
 <a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
-<div class="meta"><span class="num">NOTE 0010</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill">持續補充</span><span class="pill">2026-11-04</span></div>
+<div class="meta"><span class="num">NOTE 0010</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill">持續補充</span><span class="pill">2026-11-05</span></div>
 <h1>測試地圖與待辦</h1>
 
 <div class="tldr"><strong>一句話：</strong>每個測試都是一個保全，各自顧一扇門。這張地圖記錄哪扇門有人顧、哪扇還空著。</div>
@@ -39,7 +39,14 @@
 <tr><td>直接回答</td><td>不需要工具時，一輪就收工</td><td>loop 多跑了，或取文字取錯</td></tr>
 <tr><td>跑工具再回答</td><td>tool_use → run_tool → tool_result 接對 id → 最終答案</td><td>messages 組錯，或 id 對不上</td></tr>
 <tr><td>一直呼叫工具</td><td>跑滿 MAX_TURNS 會停</td><td>保險絲壞了，可能無限燒錢</td></tr>
-<tr><td><code>max_tokens</code> / <code>refusal</code></td><td>沒拿到完整答案就明確失敗</td><td>在假裝成功</td></tr>
+<tr><td><code>refusal</code></td><td>沒拿到答案就明確失敗</td><td>在假裝成功</td></tr>
+<tr><td>截斷的 <code>tool_use</code></td><td>不執行、不 append，調高 <code>max_tokens</code> 重送</td><td>可能拿殘缺的參數去執行 tool</td></tr>
+<tr><td>截斷的文字</td><td>調高重送，不回傳半句話</td><td>使用者只拿到錯誤或半句話</td></tr>
+<tr><td>重試又被截斷</td><td>只重試一次就停</td><td>重試沒有上限，一直花錢</td></tr>
+<tr><td>超過 token 預算</td><td>比 <code>MAX_TURNS</code> 先停</td><td>成本上限失效</td></tr>
+<tr><td>最後回答超過預算</td><td>照樣回傳，錢已經付了</td><td>預算檢查跑到 <code>end_turn</code> 前面了</td></tr>
+<tr><td>截斷時已超預算</td><td>不重試</td><td>超預算還多花一次</td></tr>
+<tr><td>平行 tool</td><td>結果放同一則 <code>user</code> 訊息，id 都對上</td><td>真的 API 會拒絕這種格式，或結果對錯</td></tr>
 <tr><td>未知的 tool</td><td>回 is_error 給模型，不當掉</td><td>模型亂點菜時 agent 會翻桌</td></tr>
 <tr><td>缺參數 / 型別錯誤</td><td>回 is_error，不 KeyError</td><td>同上</td></tr>
 <tr><td>未知的 tool，沒帶 order_id</td><td>訊息說的是模型叫的 tool</td><td>又變成先驗參數、再認 tool</td></tr>
@@ -52,20 +59,22 @@
 </table>
 
 <h2>已決定</h2>
-<div class="callout ok"><b>end_turn 卻一個字都沒說，該怎麼辦？</b><br>比照 <code>max_tokens</code>：拿不到答案就 raise，不要假裝成功。上表和測試都更新了，經過見 0014。</div>
+<div class="callout ok"><b>end_turn 卻一個字都沒說，該怎麼辦？</b><br>比照 <code>refusal</code>：拿不到答案就 raise，不要假裝成功。上表和測試都更新了，經過見 0014。</div>
 
 <h2>之後要回頭想的事</h2>
 <table>
 <tr><th>Component</th><th>問題</th></tr>
 <tr><td>3 紅隊測試</td><td>tool_result 是<b>不可信內容</b>。如果訂單備註裡藏了「忽略之前的指示」，模型會照做嗎？</td></tr>
-<tr><td>4 Telemetry</td><td><code>response.usage</code> 的 token 數要記下來，才算得出每個問題花多少錢</td></tr>
+<tr><td>2 Orchestrator</td><td><code>tools</code> 寫死在迴圈裡，不同 subagent 要拿不同的 tools</td></tr>
+<tr><td>4 Telemetry</td><td>迴圈已經用 <code>usage</code> 做預算（見 0015）；這裡要做的是把數字記下來，算出每個問題花多少錢</td></tr>
 <tr><td>4 Telemetry</td><td>tool 當掉的細節目前印到 stderr，之後改寫進 trace</td></tr>
 <tr><td>6 權限控管</td><td>資料最小化：模型真的需要看到客戶名稱和單價嗎？只回傳回答問題需要的欄位</td></tr>
+<tr><td>加入寫入 tool 之前</td><td>最後一圈的 tool 會執行，結果卻送不回去，使用者再試一次就做兩次（見 0015）</td></tr>
 <tr><td>6 權限控管</td><td>IDOR：<code>lookup_order</code> 不檢查問的人有沒有權限，見 0012</td></tr>
 </table>
 
 <h2>相關筆記</h2>
-<ul><li><a href="0005-pytest.html">0005 pytest 生存指南</a></li><li><a href="0009-fake-client.html">0009 FakeClient</a></li><li><a href="0013-tool-crash.html">0013 第一個安全測試</a></li><li><a href="0014-first-real-run.html">0014 真的模型才測得出來的事</a></li></ul>
+<ul><li><a href="0005-pytest.html">0005 pytest 生存指南</a></li><li><a href="0009-fake-client.html">0009 FakeClient</a></li><li><a href="0013-tool-crash.html">0013 第一個安全測試</a></li><li><a href="0014-first-real-run.html">0014 真的模型才測得出來的事</a></li><li><a href="0015-acceptance-gaps.html">0015 驗收抓到的洞</a></li></ul>
 
 <nav class="pager"><a href="0009-fake-client.html">← 0009 FakeClient</a><a href="0011-stop-or-ask-again.html">0011 該停還是再問一次 →</a></nav>
 </main>

@@ -36,7 +36,7 @@
 <tr><th>stop_reason</th><th>白話</th><th>你的 loop 該做什麼</th></tr>
 <tr><td><code>end_turn</code></td><td>「我講完了」</td><td>取文字、回傳</td></tr>
 <tr><td><code>tool_use</code></td><td>「麻煩幫我查一下」</td><td>跑工具、再問一輪</td></tr>
-<tr><td><code>max_tokens</code></td><td>「我話還沒說完就被掐斷了」</td><td>raise，答案不完整</td></tr>
+<tr><td><code>max_tokens</code></td><td>「我話還沒說完就被掐斷了」</td><td>丟掉回應、不執行 tool，調高重送一次；再截斷才 raise（見 0015）</td></tr>
 <tr><td><code>refusal</code></td><td>「這個我不能回答」</td><td>raise</td></tr>
 </table>
 

@@ -9,10 +9,10 @@
 <body>
 <main>
 <a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
-<div class="meta"><span class="num">NOTE 0011</span><span class="pill">第 1 課</span><span class="pill">錯誤與邊界</span><span class="pill ok">已理解</span><span class="pill">2026-11-04</span></div>
+<div class="meta"><span class="num">NOTE 0011</span><span class="pill">第 1 課</span><span class="pill">錯誤與邊界</span><span class="pill ok">已理解</span><span class="pill">2026-11-05 更正</span></div>
 <h1>該停下來，還是該再問模型一次？</h1>
 
-<div class="tldr"><strong>一句話：</strong>手上有模型不知道的新資訊，再問一次才有意義。沒有新資訊，再問只是花錢聽同一句話。</div>
+<div class="tldr"><strong>一句話：</strong>手上有模型不知道的新資訊，再問一次才有意義。沒有新資訊，再問只是花錢聽同一句話，除非你改了請求本身（見踩雷紀錄的更正）。</div>
 
 <h2>背景</h2>
 <p>寫「不存在的 tool」測試時卡住了：為什麼 <code>client.calls</code> 是 2 次？我一開始以為這兩次是「<code>create</code> 一次，加上 assistant 去查訂單一次」。接著又想不通：那 <code>max_tokens</code> 和 <code>refusal</code> 的測試為什麼只有 1 次？</p>
@@ -50,7 +50,8 @@
 
 <table>
 <tr><th>情況</th><th>有新資訊嗎</th><th>再問會改變結果嗎</th><th>做法</th></tr>
-<tr><td><code>max_tokens</code>、<code>refusal</code></td><td>沒有</td><td>不會</td><td>raise，停下來</td></tr>
+<tr><td><code>refusal</code></td><td>沒有</td><td>不會</td><td>raise，停下來</td></tr>
+<tr><td><code>max_tokens</code>（已更正）</td><td>沒有，但請求可以改</td><td>調高 <code>max_tokens</code> 就可能會</td><td>丟掉回應，調高重送一次；再截斷才 raise</td></tr>
 <tr><td>不存在的 tool、參數錯誤</td><td>有：錯誤結果</td><td>會</td><td>回報給模型，繼續</td></tr>
 </table>
 
@@ -69,6 +70,7 @@ else:
 <p>我不可能預先想到所有壞情況，所以不確定的時候就停下來。這叫 <b>fail closed</b>，這個 repo 的 Bash guard 用的也是同一個原則。</p>
 
 <h2>踩雷紀錄</h2>
+<div class="callout"><b>更正（2026-11-05）：max_tokens 不是「再問也沒用」</b><br>這篇原本把 <code>max_tokens</code> 和 <code>refusal</code> 放在一起，說再問不會改變結果。同樣的請求再送一次確實沒用，但回答是被<b>我設的上限</b>截斷的，調高就可能成功。驗收時才抓到，細節見 <a href="0015-acceptance-gaps.html">0015</a>。</div>
 <div class="callout"><b>只擋了 max_tokens，其他照樣 runaway</b><br>第一版只寫了 <code>if response.stop_reason == "max_tokens"</code>，測試全綠。換成測試沒涵蓋的值，同樣的請求被送了 5 次：
 <pre><code>refusal       -&gt; unexpected stop_reason: exceed max turns on turn 5 | create() calls: 5
 pause_turn    -&gt; unexpected stop_reason: exceed max turns on turn 5 | create() calls: 5
@@ -79,7 +81,7 @@ stop_sequence -&gt; unexpected stop_reason: exceed max turns on turn 5 | create(
 <div class="callout ok"><b>錯誤訊息要說真正的原因</b><br>我原本打算讓其他 <code>stop_reason</code> 也回報「超過 max turns」。但 <code>max_tokens</code> 是回答被截斷，要調的是 <code>max_tokens</code>，跟回合數無關。訊息說錯原因，就會去修錯地方。</div>
 
 <h2>相關筆記</h2>
-<ul><li><a href="0004-errors.html">0004 raise 還是回傳錯誤</a></li><li><a href="0007-messages-grow.html">0007 那串四個中括號的拆解</a></li><li><a href="0009-fake-client.html">0009 client.calls 是誰在記錄</a></li></ul>
+<ul><li><a href="0004-errors.html">0004 raise 還是回傳錯誤</a></li><li><a href="0007-messages-grow.html">0007 那串四個中括號的拆解</a></li><li><a href="0009-fake-client.html">0009 client.calls 是誰在記錄</a></li><li><a href="0015-acceptance-gaps.html">0015 max_tokens 的正確處理</a></li></ul>
 
 <nav class="pager"><a href="0010-test-map.html">← 0010 測試地圖</a><a href="0012-trust-boundary.html">0012 信任邊界 →</a></nav>
 </main>

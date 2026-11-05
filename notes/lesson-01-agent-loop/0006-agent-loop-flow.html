@@ -44,7 +44,7 @@
 <path class="arr" d="M420 216 L570 262" marker-end="url(#a)"/>
 <rect class="ok" x="20" y="264" width="180" height="76" rx="8"/><text class="th" x="110" y="290" text-anchor="middle">end_turn</text><text class="s" x="110" y="312" text-anchor="middle">取出文字區塊</text><text class="s" x="110" y="330" text-anchor="middle">回傳答案，收工</text>
 <rect class="acc" x="240" y="264" width="200" height="132" rx="8"/><text class="th" x="340" y="290" text-anchor="middle">tool_use</text><text class="s" x="340" y="314" text-anchor="middle">1 把模型回覆加進 messages</text><text class="s" x="340" y="336" text-anchor="middle">2 每張點菜單 → run_tool</text><text class="s" x="340" y="358" text-anchor="middle">3 tool_result 包成 user 訊息</text><text class="s" x="340" y="380" text-anchor="middle">4 ↻ 回到 create() 再問一次</text>
-<rect class="warn" x="480" y="264" width="180" height="76" rx="8"/><text class="th" x="570" y="290" text-anchor="middle">其他</text><text class="s" x="570" y="312" text-anchor="middle">max_tokens、refusal…</text><text class="s" x="570" y="330" text-anchor="middle">raise AgentLoopError</text>
+<rect class="warn" x="480" y="264" width="180" height="76" rx="8"/><text class="th" x="570" y="290" text-anchor="middle">其他</text><text class="s" x="570" y="312" text-anchor="middle">refusal、再次截斷…</text><text class="s" x="570" y="330" text-anchor="middle">raise AgentLoopError</text>
 <rect class="warn" x="160" y="412" width="360" height="44" rx="8"/><text class="th" x="340" y="439" text-anchor="middle">跑滿 MAX_TURNS（5 輪）→ raise</text>
 </svg>
 <figcaption>三條路：收工、再跑一輪、報錯。最下面那條是防止無限迴圈的保險絲</figcaption>

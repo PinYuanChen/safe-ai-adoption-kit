@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0015 驗收抓到的洞</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+<a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
+<div class="meta"><span class="num">NOTE 0015</span><span class="pill">第 1 課</span><span class="pill">驗收</span><span class="pill">待問答驗收</span><span class="pill">2026-11-05</span></div>
+<h1>測試全綠，然後驗收說：還沒做完</h1>
+
+<div class="tldr"><strong>一句話：</strong>全綠只代表「我寫的測試都過了」，不代表「該做的都做了」。<code>max_tokens</code> 和 <code>MAX_TURNS</code> 都不是成本上限，要自己累加 <code>usage</code>。</div>
+
+<h2>背景</h2>
+<p>27 個測試全綠、PR 也 merge 了，連筆記都寫了「Component 1 完成」。回到課程那邊的 session 驗收，它對照講義和程式碼，列出了 token 預算和截斷重試都沒做，也沒有截斷 <code>tool_use</code> 的測試。</p>
+
+<h2>觀念</h2>
+<h3>三個上限，各管各的</h3>
+<table>
+<tr><th>上限</th><th>管什麼</th><th>管不到什麼</th></tr>
+<tr><td><code>max_tokens</code></td><td>單次回應的輸出長度</td><td>輸入；而且每一圈都重新拿一份額度</td></tr>
+<tr><td><code>MAX_TURNS</code></td><td>圈數</td><td>每一圈有多貴</td></tr>
+<tr><td><code>TOKEN_BUDGET</code></td><td>整場累計的 input + output</td><td>（這才是成本那道）</td></tr>
+</table>
+<p>每一圈都要重送整段歷史，所以圈數不多也可能很貴。我的真實 log 裡一題大約 2,000 tokens（第 1 題 657 + 55 + 958 + 151 = 1,821），所以 <code>TOKEN_BUDGET</code> 先設 10,000，約是正常用量的 5 倍。</p>
+
+<h3>每一圈的判斷順序</h3>
+<figure>
+<svg viewBox="0 0 680 318" role="img" aria-label="每次呼叫後先累加 usage，再依序判斷 end_turn、token 預算、可重試的截斷、tool_use，其他情況 raise">
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="head" d="M2 1L8 5L2 9"/></marker></defs>
+<rect class="box" x="20" y="12" width="300" height="38" rx="8"/><text class="mono" x="170" y="36" text-anchor="middle">create()，累加 usage</text>
+<path class="arr" d="M170 50 L170 64" marker-end="url(#a)"/>
+<rect class="box" x="20" y="64" width="300" height="38" rx="8"/><text class="t" x="170" y="88" text-anchor="middle">1. end_turn？</text>
+<path class="arr" d="M320 83 L380 83" marker-end="url(#a)"/>
+<rect class="ok" x="380" y="64" width="280" height="38" rx="8"/><text class="t" x="520" y="88" text-anchor="middle">回傳答案：錢已經付了，不要丟</text>
+<path class="arr" d="M170 102 L170 116" marker-end="url(#a)"/>
+<rect class="box" x="20" y="116" width="300" height="38" rx="8"/><text class="t" x="170" y="140" text-anchor="middle">2. 超過 TOKEN_BUDGET？</text>
+<path class="arr" d="M320 135 L380 135" marker-end="url(#a)"/>
+<rect class="warn" x="380" y="116" width="280" height="38" rx="8"/><text class="t" x="520" y="140" text-anchor="middle">raise：不執行 tool，也不重試</text>
+<path class="arr" d="M170 154 L170 168" marker-end="url(#a)"/>
+<rect class="box" x="20" y="168" width="300" height="38" rx="8"/><text class="t" x="170" y="192" text-anchor="middle">3. max_tokens 且還沒到天花板？</text>
+<path class="arr" d="M320 187 L380 187" marker-end="url(#a)"/>
+<rect class="acc" x="380" y="168" width="280" height="38" rx="8"/><text class="t" x="520" y="192" text-anchor="middle">整則丟掉，max_tokens 加倍重送</text>
+<path class="arr" d="M170 206 L170 220" marker-end="url(#a)"/>
+<rect class="box" x="20" y="220" width="300" height="38" rx="8"/><text class="t" x="170" y="244" text-anchor="middle">4. tool_use？</text>
+<path class="arr" d="M320 239 L380 239" marker-end="url(#a)"/>
+<rect class="ok" x="380" y="220" width="280" height="38" rx="8"/><text class="t" x="520" y="244" text-anchor="middle">執行 tool，結果送回，下一圈</text>
+<path class="arr" d="M170 258 L170 272" marker-end="url(#a)"/>
+<rect class="box" x="20" y="272" width="300" height="38" rx="8"/><text class="t" x="170" y="296" text-anchor="middle">5. 其他</text>
+<path class="arr" d="M320 291 L380 291" marker-end="url(#a)"/>
+<rect class="warn" x="380" y="272" width="280" height="38" rx="8"/><text class="t" x="520" y="296" text-anchor="middle">raise：refusal、再次截斷…</text>
+</svg>
+<figcaption>順序本身就是規則：調換 1、2 會丟掉已付錢的答案，調換 2、3 會在超預算時多花一次</figcaption>
+</figure>
+
+<h3>截斷的回應為什麼要整則丟掉</h3>
+<p><code>tool_use</code> 的 <code>input</code> 可能只寫了一半，例如 <code>HL-1</code>。執行它等於拿殘缺的參數去做事。所以不執行、不 append，用同一份 <code>messages</code> 重送。被丟掉的回應一樣要付錢，也算進預算和回合數，所以重試一定要有上限：這裡是 4096 → 8192，只重試一次。</p>
+
+<h3>怎麼證明 tool 真的沒被執行：SpyOrders</h3>
+<pre><code>class SpyOrders:
+    def __init__(self):
+        self.was_read = False
+
+    def __iter__(self):
+        self.was_read = True
+        return iter([])</code></pre>
+<p><code>run_tool</code> 的 <code>try</code> / <code>except</code> 會接住錯誤，光看有沒有爆炸分不出 tool 跑過沒有。這個假資料來源只記一件事：有沒有人走訪過我。</p>
+
+<h3>測試的測試：故意改壞 code</h3>
+<p>測試一寫就通過時，怎麼知道它有在顧門？在暫時的副本裡故意改壞 code，看哪個測試會紅。這叫 mutation testing。這次試了 10 種：</p>
+<table>
+<tr><th>故意改壞</th><th>結果</th></tr>
+<tr><td>結果拆成多則 <code>user</code> 訊息</td><td>抓到</td></tr>
+<tr><td>拿掉預算檢查 / 預算移到 <code>end_turn</code> 前</td><td>抓到</td></tr>
+<tr><td>沒累加 output tokens / 每圈歸零</td><td>抓到</td></tr>
+<tr><td>重試沒上限 / 沒調高 <code>max_tokens</code></td><td>抓到</td></tr>
+<tr><td>截斷的回應 append 進 messages / 執行截斷的 tool</td><td>抓到</td></tr>
+<tr><td><b>重試移到預算檢查之前</b></td><td><b>沒抓到</b>，補了測試之後才抓到</td></tr>
+</table>
+
+<h2>踩雷紀錄</h2>
+<div class="callout"><b>「完成」喊得太早</b><br>這一路的步驟是 Claude 排的，它沒有對照講義，就跟我說 Component 1 完成了。講義的檢查清單明明列了 token 預算和截斷重試。完成的定義要來自需求，不是來自「我們原本排了哪些步驟」。</div>
+<div class="callout"><b>筆記 0011 教錯了一件事</b><br>當時寫「<code>max_tokens</code> 再問也不會改變結果」。同樣的請求再送一次確實沒用，但<b>調高 <code>max_tokens</code></b> 就可能成功。已在 0011 更正。</div>
+<div class="callout"><b>usage 被排到了 Component 4</b><br>筆記 0010 原本把 <code>usage</code> 全部歸給 Telemetry。但 Telemetry 只是把數字記下來，能讓迴圈停下來的是迴圈自己。</div>
+<div class="callout ok"><b>驗收為什麼要換一個 session</b><br>一路陪寫的人，容易跟著同一份路線一起漏掉同一件事。這次是另一個帶著講義的 session 才抓到的。</div>
+
+<h2>還沒處理，先記著</h2>
+<table>
+<tr><th>什麼時候</th><th>問題</th></tr>
+<tr><td>Component 2</td><td><code>tools</code> 寫死在迴圈裡，不同 subagent 要拿不同的 tools</td></tr>
+<tr><td>加入寫入 tool 之前</td><td>最後一圈的 tool 會執行，結果卻送不回去。動作做了，使用者卻看到失敗，再試一次就做兩次</td></tr>
+<tr><td>下一次真實執行</td><td>截斷重試和 token 預算都只用 FakeClient 測過，還沒碰過真的 API</td></tr>
+</table>
+
+<h2>相關筆記</h2>
+<ul><li><a href="0011-stop-or-ask-again.html">0011 該停還是再問一次（已更正）</a></li><li><a href="0010-test-map.html">0010 這些情況各有哪個測試在顧</a></li><li><a href="0014-first-real-run.html">0014 真實 log 裡的 token 數字</a></li></ul>
+
+<nav class="pager"><a href="0014-first-real-run.html">← 0014 第一次接上真的模型</a><a href="index.html">回第 1 課 →</a></nav>
+</main>
+</body>
+</html>
