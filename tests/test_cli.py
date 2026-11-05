@@ -31,7 +31,7 @@ def test_reads_synthetic_orders_so_the_tool_finds_a_real_fixture_order(capsys):
 
 
 def test_agent_failure_exits_nonzero_with_nothing_on_stdout(capsys):
-    client = FakeClient([text_response("cut off", stop_reason="max_tokens")])
+    client = FakeClient([text_response("I can't help with that.", stop_reason="refusal")])
 
     exit_code = main(["Has order HL-10421 shipped?"], client=client)
 

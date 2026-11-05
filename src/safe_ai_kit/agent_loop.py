@@ -12,6 +12,9 @@ from safe_ai_kit.tools import LOOKUP_ORDER_TOOL, lookup_order
 MODEL = "claude-haiku-5-5"
 MAX_TURNS = 5
 TOKEN_BUDGET = 10000
+MAX_TOKENS = 4096
+MAX_TOKENS_CEILING = 8192
+
 
 class AgentLoopError(Exception):
     """Raised when the agent loop cannot finish normally."""
@@ -23,9 +26,13 @@ def run_agent(question, client, orders):
     Sends the question to the model with `lookup_order` available. Each time the
     model asks for `lookup_order`, runs it and sends the result back, until the
     model ends its turn; then returns the reply's text blocks joined with
-    newlines. Raises AgentLoopError if the model has not finished within
-    MAX_TURNS calls, ends its turn with no text, or stops for an unexpected
-    reason.
+    newlines. A reply cut off by max_tokens is discarded without running its
+    tools, and the same messages are resent with max_tokens doubled, up to
+    MAX_TOKENS_CEILING.
+
+    Raises AgentLoopError if the model has not finished within MAX_TURNS calls,
+    usage goes over TOKEN_BUDGET before a final answer, a reply ends its turn
+    with no text, or it stops for any other reason.
 
     `client` is anything exposing `client.messages.create(...)`: a real
     `anthropic.Anthropic()` (owner-run only) or `tests/fake_client.FakeClient`.
@@ -34,10 +41,11 @@ def run_agent(question, client, orders):
     """
     messages = [{"role": "user", "content": question}]
     used_tokens = 0
+    max_tokens = MAX_TOKENS
     for turn in range(MAX_TURNS):
         response = client.messages.create(
             model=MODEL,
-            max_tokens=1024,
+            max_tokens=max_tokens,
             tools=[LOOKUP_ORDER_TOOL],
             messages=messages,
         )
@@ -50,6 +58,9 @@ def run_agent(question, client, orders):
             return answer
         elif used_tokens > TOKEN_BUDGET:
             raise AgentLoopError(f"token budget {TOKEN_BUDGET} exceeded on turn {turn + 1}")
+        elif response.stop_reason == "max_tokens" and max_tokens < MAX_TOKENS_CEILING:
+            max_tokens *= 2
+            continue
         elif response.stop_reason == "tool_use":
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []

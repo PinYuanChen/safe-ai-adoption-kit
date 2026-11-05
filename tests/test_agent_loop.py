@@ -54,13 +54,66 @@ def test_raises_when_model_keeps_calling_tools(orders):
     assert len(client.calls) == MAX_TURNS
 
 
-def test_raises_on_unexpected_stop_reason_max_tokens(orders):
+class SpyOrders:
+    """Records whether a tool actually read the order data."""
+
+    def __init__(self):
+        self.was_read = False
+
+    def __iter__(self):
+        self.was_read = True
+        return iter([])
+
+
+def test_truncated_tool_use_is_not_run_and_is_retried_with_more_tokens():
+    question = "Has order HL-10421 shipped?"
+    orders = SpyOrders()
+    reply = "I need the full order ID."
+    client = FakeClient([
+        FakeMessage(
+            content=[ToolUseBlock(id="toolu_cut", name="lookup_order", input={"order_id": "HL-1"})],
+            stop_reason="max_tokens",
+        ),
+        text_response(reply),
+    ])
+
+    answer = run_agent(question, client, orders)
+
+    assert answer == reply
+    assert orders.was_read is False                               
+    assert client.calls[1]["max_tokens"] > client.calls[0]["max_tokens"]
+    assert client.calls[1]["messages"] == [{"role": "user", "content": question}]
+
+
+def test_truncated_text_is_retried(orders):
+    final_reply = "Order HL-10421 shipped on 2026-09-09."
     client = FakeClient([
         text_response("Order HL-10421 shipped on", stop_reason="max_tokens"),
+        text_response(final_reply),
+    ])
+
+    assert run_agent("Has order HL-10421 shipped?", client, orders) == final_reply
+
+
+def test_stops_when_the_retry_is_also_truncated(orders):
+    client = FakeClient([
+        text_response("cut off", stop_reason="max_tokens")
+        for _ in range(MAX_TURNS)
     ])
 
     with pytest.raises(AgentLoopError, match="stop_reason: max_tokens"):
+        run_agent("Has order HL-10421 shipped?", client, orders)
 
+    assert len(client.calls) == 2
+
+
+def test_does_not_retry_truncation_when_over_budget(orders):
+    client = FakeClient([
+        text_response("cut off", stop_reason="max_tokens", input_tokens=TOKEN_BUDGET + 1),
+        text_response("should never be requested"),
+    ])
+
+    with pytest.raises(AgentLoopError, match="token budget"):
         run_agent("Has order HL-10421 shipped?", client, orders)
 
     assert len(client.calls) == 1
