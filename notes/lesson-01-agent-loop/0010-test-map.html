@@ -46,7 +46,7 @@
 <tr><td>超過 token 預算</td><td>比 <code>MAX_TURNS</code> 先停</td><td>成本上限失效</td></tr>
 <tr><td>最後回答超過預算</td><td>照樣回傳，錢已經付了</td><td>預算檢查跑到 <code>end_turn</code> 前面了</td></tr>
 <tr><td>截斷時已超預算</td><td>不重試</td><td>超預算還多花一次</td></tr>
-<tr><td>平行 tool</td><td>結果放同一則 <code>user</code> 訊息，id 都對上</td><td>真的 API 會拒絕這種格式，或結果對錯</td></tr>
+<tr><td>平行 tool</td><td>結果放同一則 <code>user</code> 訊息，id 都對上</td><td>模型可能因此少用平行呼叫（見 0007），或結果對錯</td></tr>
 <tr><td>未知的 tool</td><td>回 is_error 給模型，不當掉</td><td>模型亂點菜時 agent 會翻桌</td></tr>
 <tr><td>缺參數 / 型別錯誤</td><td>回 is_error，不 KeyError</td><td>同上</td></tr>
 <tr><td>未知的 tool，沒帶 order_id</td><td>訊息說的是模型叫的 tool</td><td>又變成先驗參數、再認 tool</td></tr>

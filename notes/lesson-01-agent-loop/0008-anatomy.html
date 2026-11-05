@@ -75,7 +75,7 @@
 </ul>
 
 <h2>踩雷紀錄</h2>
-<div class="callout"><b>tool_use_id 對不上</b><br>真的 API 會直接拒絕下一次請求。FakeClient 不會檢查這件事，所以要靠測試 assert <code>tool_use_id</code>。</div>
+<div class="callout"><b>tool_use_id 對不上</b><br>tool_use 等於沒有對應的結果，<a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls">文件</a>列出的錯誤是 <code>tool_use ids were found without tool_result blocks immediately after</code>。FakeClient 不會檢查這件事，所以要靠測試 assert <code>tool_use_id</code>。</div>
 
 <h2>相關筆記</h2>
 <ul><li><a href="0004-errors.html">0004 什麼時候回傳 is_error</a></li><li><a href="0009-fake-client.html">0009 FakeMessage 就是假的 response</a></li></ul>

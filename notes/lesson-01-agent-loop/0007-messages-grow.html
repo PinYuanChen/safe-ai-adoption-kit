@@ -9,7 +9,7 @@
 <body>
 <main>
 <a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
-<div class="meta"><span class="num">NOTE 0007</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill ok">已理解</span><span class="pill">2026-11-02</span></div>
+<div class="meta"><span class="num">NOTE 0007</span><span class="pill">第 1 課</span><span class="pill">元件與協作</span><span class="pill ok">已理解</span><span class="pill">2026-11-05 更正</span></div>
 <h1>messages 是怎麼長大的</h1>
 
 <div class="tldr"><strong>一句話：</strong>模型是金魚，沒有記憶。每次呼叫 <code>create()</code> 都要把<b>整段對話</b>從頭重送一次，所以 messages 會一輪一輪變長。</div>
@@ -42,13 +42,15 @@
 <h3>三條鐵律</h3>
 <table>
 <tr><th>規則</th><th>為什麼</th></tr>
-<tr><td>role 一定是 user、assistant 輪流</td><td>API 的規定，連續兩則 user 會被拒絕</td></tr>
+<tr><td>role 要 user、assistant 輪流</td><td>模型是照輪流的 turn 訓練的。連續同 role 的訊息不會被拒絕，而是被合併成一個 turn</td></tr>
+<tr><td>這一輪的 tool_result 全放同一則 user 訊息</td><td>要緊接在 tool_use 後面。拆開的話，文件說會「教」模型少用平行呼叫</td></tr>
 <tr><td>tool_result 放在 <b>user</b> 訊息裡</td><td>在 API 眼裡，工具結果是「你」回報給模型的</td></tr>
 <tr><td>assistant 那則要原封不動送回</td><td>包括開場白的 TextBlock，模型才看得到自己說過的話</td></tr>
 <tr><td><code>tool_use_id</code> 要等於對應的 <code>id</code></td><td>一則回覆可能有好幾張點菜單，靠 id 對上哪道菜是哪張單的</td></tr>
 </table>
 
 <h2>踩雷紀錄</h2>
+<div class="callout"><b>更正（2026-11-05）：連續的 user 不會被拒絕</b><br>這裡原本寫「連續兩則 user 會被拒絕」，是沒查文件就寫的。<a href="https://platform.claude.com/docs/en/api/messages">Messages API 文件</a>寫的是合併成一個 turn。驗收 session 抓到的。</div>
 <div class="callout ok"><b>為什麼 FakeClient 要 deep copy？</b><br><code>run_agent</code> 一直往<b>同一個</b> messages list 加東西。如果 <code>calls[0]</code> 只存參照，事後打開會看到三則訊息，而不是當時真正送出的一則。deep copy 就像當下拍照存證，之後怎麼改都不影響照片。</div>
 
 <h2>相關筆記</h2>

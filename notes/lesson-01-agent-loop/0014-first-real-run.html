@@ -9,7 +9,7 @@
 <body>
 <main>
 <a class="back" href="../index.html">學習軌跡</a> / <a class="back" href="index.html">第 1 課</a>
-<div class="meta"><span class="num">NOTE 0014</span><span class="pill">第 1 課</span><span class="pill">真實 API</span><span class="pill ok">已理解</span><span class="pill">2026-11-04</span></div>
+<div class="meta"><span class="num">NOTE 0014</span><span class="pill">第 1 課</span><span class="pill">真實 API</span><span class="pill ok">已理解</span><span class="pill">2026-11-05 更正</span></div>
 <h1>第一次接上真的模型：FakeClient 看不到的事</h1>
 
 <div class="tldr"><strong>一句話：</strong>FakeClient 證明我的迴圈寫對了；只有真的模型，才看得出它實際會怎麼用這個迴圈。</div>
@@ -51,7 +51,7 @@
 <tr><td>取消 HL-10425</td><td>2</td><td>先查訂單，再說做不到</td><td>沒假裝成功，但多查了一次（見踩雷）</td></tr>
 <tr><td>HL-10421 和 HL-10429</td><td>2</td><td><b>同一則回覆</b>叫兩個 tool</td><td>結果沒對調，API 也接受了格式</td></tr>
 </table>
-<p>最後一題是最有價值的驗證：<code>tool_use_id</code> 對不上，或結果沒放在同一則 <code>user</code> 訊息裡，API 會回 400。它接受了，代表 <code>tool_results</code> 的組法是對的。查不到的 dict 裡帶 <code>order_id</code>，也正好用在這個情境。</p>
+<p>最後一題的價值：模型真的在一則回覆裡叫了兩個 tool，我回傳的兩個 <code>tool_result</code> 也被 API 接受，答案沒有對調。查不到的 dict 裡帶 <code>order_id</code>，也正好用在這個情境。</p>
 
 <h3>token 花在哪裡</h3>
 <table>
@@ -65,6 +65,7 @@
 </ul>
 
 <h2>踩雷紀錄</h2>
+<div class="callout"><b>更正（2026-11-05）：這次呼叫沒有證明「必須放同一則」</b><br>這裡原本寫「結果沒放在同一則 <code>user</code> 訊息裡，API 會回 400」。其實<a href="https://platform.claude.com/docs/en/api/messages">連續的 user 訊息會被合併</a>，所以拆開不一定會被拒絕，這次成功也證明不了這條規則。還是要放同一則，理由是<a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use">拆開會「教」模型少用平行呼叫</a>。</div>
 <div class="callout"><b>問狀態，卻連客戶和單價都說了</b><br>第 3 題只問狀態，第 5 題只要取消，模型都列出了客戶名稱、品項或單價。第 1 題問「出貨了嗎」就沒有。<code>lookup_order</code> 回傳整筆，模型拿到什麼就可能說什麼。再加上 IDOR（見 0012），猜到 5 位數字就可能看到別家的採購內容。這不能靠模型自己節制，要在 Component 6 從 tool 的回傳值解決。</div>
 <div class="callout"><b>模型補了資料裡沒有的東西</b><br>第 5 題叫使用者聯絡「order support or fulfilment team」，第 2 題說有「confirmation email」可以幫忙查。這個團隊不在任何資料裡，tool 也只能用編號查。不嚴重，但正是答案品質 eval 要抓的東西。</div>
 <div class="callout"><b>要取消訂單，卻先查了一次</b><br>這題不查也能回答，多花了一輪。推測跟 description 寫的「Use this whenever the user asks about a specific order」有關，但只跑一次還不能確定。這是 Component 3 的 trajectory 題目。</div>
