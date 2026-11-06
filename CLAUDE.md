@@ -29,6 +29,12 @@ When I say "記筆記" or ask to record what I didn't understand, write it here 
 - When adding notes: update the lesson's `index.html` (note list and timeline entry with the date), and when starting a new lesson, add its folder and turn its card in `notes/index.html` from `todo` into a linked card.
 - Check that every relative link resolves, then show me the result before committing.
 
+## Verifying claims
+- Before stating how an external system behaves (Anthropic API, SDKs, libraries, tools, prices, limits), check its official docs in this session. In notes and reviews, link the page and quote the sentence the claim rests on.
+- Label every such claim as one of: documented (with link), observed (with the log or command), or inference. If it was not checked, say "unverified" instead of stating it as fact.
+- A passing test or a successful call proves only what it exercised. Say what it did not prove.
+- Before saying a component or lesson is done, check it against the lesson's checklist in `~/learn-applied-ai/lessons/` and this file, and list anything missing. Do not treat the session's plan as the definition of done.
+
 ## Security rules
 - Never put secrets in code, config, commits, or chat. Secrets live in the macOS Keychain and are injected at run time by `scripts/with-secrets.sh`, which only I run (it refuses to start inside Claude Code). Claude Code works with mocked LLM clients; real API runs are mine.
 - `.env*` files and key files must never be read or created with real values; `.env.example` holds names only.
