@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from fake_client import FakeClient, FakeMessage, TextBlock, text_response, tool_use_response, ToolUseBlock
-from safe_ai_kit.agent_loop import run_agent, AgentLoopError, MAX_TURNS, run_tool, TOKEN_BUDGET
+from fake_client import FakeClient, FakeMessage, TextBlock, text_response, tool_use_response, ToolUseBlock, Usage
+from safe_ai_kit.agent_loop import run_agent, AgentLoopError, MAX_TURNS, run_tool, TOKEN_BUDGET, MAX_TOKENS, MAX_TOKENS_CEILING
 from safe_ai_kit.tools import LOOKUP_ORDER_TOOL
 
 
@@ -282,6 +282,20 @@ def test_raises_when_token_budget_is_exceeded(orders):
 
     assert len(client.calls) == 2
     assert len(client.calls) < MAX_TURNS
+
+
+def test_raises_when_truncated_tool_use_is_also_over_budget(orders):
+    client = FakeClient([
+        FakeMessage([TextBlock("cut off")], "max_tokens", Usage(700, MAX_TOKENS)),
+        FakeMessage([TextBlock("cut off")], "max_tokens", Usage(700, MAX_TOKENS_CEILING)),
+    ])
+
+    with pytest.raises(AgentLoopError) as exc_info:
+        run_agent("Has order HL-10421 shipped?", client, orders)
+
+    message = str(exc_info.value)
+    assert "token budget" in message
+    assert "max_tokens" in message
 
 
 def test_returns_answer_even_if_final_reply_goes_over_budget(orders):

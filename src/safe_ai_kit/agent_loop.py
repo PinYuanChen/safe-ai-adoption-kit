@@ -57,6 +57,8 @@ def run_agent(question, client, orders):
                 raise AgentLoopError(f"end_turn with no text on turn {turn + 1}")
             return answer
         elif used_tokens > TOKEN_BUDGET:
+            if response.stop_reason == "max_tokens":
+                raise AgentLoopError(f"max_tokens and token budget exceeded on turn {turn + 1}")
             raise AgentLoopError(f"token budget {TOKEN_BUDGET} exceeded on turn {turn + 1}")
         elif response.stop_reason == "max_tokens" and max_tokens < MAX_TOKENS_CEILING:
             max_tokens *= 2
